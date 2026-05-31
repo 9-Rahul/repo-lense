@@ -1,5 +1,5 @@
 import { prisma } from '@/infrastructure/database/prisma';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Code2, FolderTree, Cpu, ArrowLeft, ArrowRight, MessageSquare, Terminal } from 'lucide-react';
 import ChatInterface from '@/features/chat/ChatInterface';
@@ -21,6 +21,10 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
 
   if (!repository) {
     return notFound();
+  }
+
+  if (!repository.isIndexed) {
+    redirect(`/repo/${id}/indexing`);
   }
 
   // Derive some basic insights from file paths
