@@ -3,6 +3,7 @@ import { prisma } from '@/infrastructure/database/prisma';
 import { cloneAndReadRepo } from '@/infrastructure/github/cloner';
 
 export async function POST(req: Request) {
+  let repository: any = null;
   try {
     const { url } = await req.json();
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     const name = `${urlParts[0]}/${urlParts[1].replace('.git', '')}`;
 
     // Check if repo already exists
-    let repository = await prisma.repository.findUnique({
+    repository = await prisma.repository.findUnique({
       where: { url }
     });
 
