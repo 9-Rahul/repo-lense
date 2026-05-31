@@ -187,7 +187,8 @@ export default function SecurityPage() {
                 if (n.data?.type === 'sensitive') return '#ffb4ab';
                 return '#a08e7a';
               }}
-              style={{ backgroundColor: '#121c2a', maskColor: 'rgba(9, 20, 33, 0.7)' }}
+              style={{ backgroundColor: '#121c2a' }}
+              maskColor="rgba(9, 20, 33, 0.7)"
             />
           </ReactFlow>
 
