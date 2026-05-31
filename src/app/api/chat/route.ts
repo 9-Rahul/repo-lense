@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     // 1. Generate an embedding for the user's question
-    const queryVector = await generateEmbedding(question);
+    const queryVector = await generateEmbedding(question, 5, 3000);
     const vectorString = `[${queryVector.join(',')}]`;
 
     // 2. Perform Cosine Similarity Search using pgvector

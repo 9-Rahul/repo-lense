@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     for (let i = 0; i < allFileChunks.length; i += BATCH_SIZE) {
       const batch = allFileChunks.slice(i, i + BATCH_SIZE);
       
-      const embeddings = await generateEmbeddingsBatch(batch.map(b => b.text));
+      const embeddings = await generateEmbeddingsBatch(batch.map(b => b.text), 5, 3000);
       
       // Insert into PostgreSQL
       for (let j = 0; j < batch.length; j++) {
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       
       // Small delay between batches to respect rate limits
       if (i + BATCH_SIZE < allFileChunks.length) {
-        await delay(1000); 
+        await delay(3000); 
       }
     }
 
