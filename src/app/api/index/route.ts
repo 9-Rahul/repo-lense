@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/infrastructure/database/prisma';
-import { chunkCode, generateEmbedding } from '@/features/indexing/embedder';
+import { chunkCode, generateEmbeddingsBatch } from '@/features/indexing/embedder';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function POST(req: Request) {
   try {
@@ -25,34 +27,51 @@ export async function POST(req: Request) {
 
     let totalChunks = 0;
 
-    // Process each file
+    // Gather all valid chunks across all files
+    const allFileChunks: { fileId: string; text: string }[] = [];
+    
     for (const file of repository.files) {
-      const chunks = chunkCode(file.content);
-      
-      for (const chunkText of chunks) {
-        // Skip empty or extremely small chunks
-        if (chunkText.trim().length < 10) continue;
+      const textChunks = chunkCode(file.content);
+      for (const text of textChunks) {
+        if (text.trim().length >= 10) {
+          allFileChunks.push({ fileId: file.id, text: text.trim() });
+        }
+      }
+    }
 
-        // Generate the 384-dimensional vector using BAAI/bge-small-en-v1.5
-        const vector = await generateEmbedding(chunkText);
+    // Process in batches of 100 to stay within Gemini rate limits and payload sizes
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < allFileChunks.length; i += BATCH_SIZE) {
+      const batch = allFileChunks.slice(i, i + BATCH_SIZE);
+      
+      const embeddings = await generateEmbeddingsBatch(batch.map(b => b.text));
+      
+      // Insert into PostgreSQL
+      for (let j = 0; j < batch.length; j++) {
+        const chunkData = batch[j];
+        const vector = embeddings[j];
         
-        // Convert the vector array to a PostgreSQL vector string format: '[1.23, 4.56, ...]'
+        if (!vector) continue; // Skip if embedding failed for some reason
+        
         const vectorString = `[${vector.join(',')}]`;
 
-        // Insert the chunk and vector using a raw SQL query since Prisma's Unsupported type 
-        // cannot be inserted using the standard ORM client methods directly yet.
         await prisma.$executeRaw`
           INSERT INTO "Chunk" (id, "fileId", content, "startIndex", "endIndex", embedding)
           VALUES (
             gen_random_uuid(), 
-            ${file.id}, 
-            ${chunkText}, 
+            ${chunkData.fileId}, 
+            ${chunkData.text}, 
             0, 
-            ${chunkText.length}, 
+            ${chunkData.text.length}, 
             ${vectorString}::vector
           )
         `;
         totalChunks++;
+      }
+      
+      // Small delay between batches to respect rate limits
+      if (i + BATCH_SIZE < allFileChunks.length) {
+        await delay(1000); 
       }
     }
 
