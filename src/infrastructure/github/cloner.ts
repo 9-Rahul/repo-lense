@@ -26,7 +26,7 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
   try {
     console.log(`[GitHub] Cloning ${githubUrl} into ${tempDir}...`);
     // Perform a shallow clone to massively speed up the download
-    await execAsync(`git clone --depth 1 ${githubUrl} ${tempDir}`);
+    await execAsync(`git clone --depth 1 "${githubUrl}" "${tempDir}"`);
     
     console.log(`[GitHub] Reading file tree from ${tempDir}...`);
     const files = readDirectory(tempDir, tempDir);

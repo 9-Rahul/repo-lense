@@ -81,6 +81,18 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Import error:', error);
+    
+    // Clean up database if we created the repository record but cloning/storing failed
+    if (repository && repository.id) {
+      try {
+        await prisma.repository.delete({
+          where: { id: repository.id }
+        });
+      } catch (dbError) {
+        console.error('Failed to clean up repository record after error:', dbError);
+      }
+    }
+    
     return NextResponse.json({ error: error.message || 'Failed to import repository' }, { status: 500 });
   }
 }
