@@ -65,7 +65,7 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<number[]
 }
 
 // A simple recursive chunker to break files into manageable pieces
-export function chunkCode(content: string, maxTokens = 800): string[] {
+export function chunkCode(content: string, maxTokens = 1500): string[] {
   // Rough heuristic: 1 token ~= 4 characters
   // Gemini embedding limit is much higher (2048 tokens), but 800 keeps semantic contexts tight
   const blocks = content.split('\n\n');

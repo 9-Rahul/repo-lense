@@ -7,7 +7,8 @@ import * as os from 'os';
 const execAsync = promisify(exec);
 
 const ALLOWED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.md', '.json'];
-const IGNORED_DIRS = ['node_modules', 'build', 'dist', '.next', 'coverage', '.git'];
+const IGNORED_DIRS = ['node_modules', 'build', 'dist', '.next', 'coverage', '.git', '.github', '.idea', '.vscode'];
+const IGNORED_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'tsconfig.tsbuildinfo'];
 
 export interface RepoFile {
   path: string;
@@ -53,6 +54,7 @@ function readDirectory(dir: string, baseDir: string): RepoFile[] {
         results = results.concat(readDirectory(filePath, baseDir));
       }
     } else {
+      if (IGNORED_FILES.includes(file)) continue;
       const ext = path.extname(file);
       if (ALLOWED_EXTENSIONS.includes(ext)) {
         const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
