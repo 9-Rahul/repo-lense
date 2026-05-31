@@ -1,4 +1,4 @@
-export async function generateEmbedding(text: string, retries = 3, delayMs = 2000): Promise<number[]> {
+export async function generateEmbedding(text: string, retries = 5, delayMs = 3000): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured');
@@ -42,7 +42,7 @@ export async function generateEmbedding(text: string, retries = 3, delayMs = 200
   throw new Error('Failed to generate embedding after all retries');
 }
 
-export async function generateEmbeddingsBatch(texts: string[], retries = 3, delayMs = 2000): Promise<number[][]> {
+export async function generateEmbeddingsBatch(texts: string[], retries = 5, delayMs = 3000): Promise<number[][]> {
   if (texts.length === 0) return [];
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
