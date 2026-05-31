@@ -38,7 +38,7 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {repositories.map(repo => (
+          {repositories.map((repo: { id: string, name: string, isIndexed: boolean, fileCount: number }) => (
             <Link 
               key={repo.id} 
               href={repo.isIndexed ? `/repo/${repo.id}` : `/repo/${repo.id}/indexing`}
