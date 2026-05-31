@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RepoLense - Repositories</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#282a2b",
+                        "on-tertiary-container": "#3f2300",
+                        "surface-tint": "#d0bcff",
+                        "on-primary-container": "#340080",
+                        "on-tertiary-fixed": "#2c1700",
+                        "inverse-on-surface": "#2f3131",
+                        "tertiary-container": "#ca801e",
+                        "surface-variant": "#333535",
+                        "on-background": "#e2e2e2",
+                        "surface-container-low": "#1a1c1c",
+                        "on-tertiary": "#482900",
+                        "on-surface-variant": "#cbc3d7",
+                        "primary": "#d0bcff",
+                        "on-tertiary-fixed-variant": "#673d00",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#333535",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-secondary-container": "#b7b4b4",
+                        "error-container": "#93000a",
+                        "error": "#ffb4ab",
+                        "inverse-primary": "#6d3bd7",
+                        "on-secondary-fixed-variant": "#474746",
+                        "surface-bright": "#38393a",
+                        "secondary-fixed": "#e5e2e1",
+                        "surface": "#121414",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "primary-container": "#a078ff",
+                        "secondary": "#c8c6c5",
+                        "inverse-surface": "#e2e2e2",
+                        "surface-dim": "#121414",
+                        "surface-container": "#1e2020",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "primary-fixed-dim": "#d0bcff",
+                        "background": "#121414",
+                        "surface-container-lowest": "#0c0f0f",
+                        "tertiary-fixed-dim": "#ffb869",
+                        "tertiary-fixed": "#ffdcbb",
+                        "secondary-container": "#474746",
+                        "outline-variant": "#494454",
+                        "on-primary": "#3c0091",
+                        "outline": "#958ea0",
+                        "primary-fixed": "#e9ddff",
+                        "on-primary-fixed": "#23005c",
+                        "tertiary": "#ffb869",
+                        "on-secondary": "#313030",
+                        "on-surface": "#e2e2e2"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "element-gap": "8px",
+                        "row-height-compact": "44px",
+                        "container-padding": "24px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter"],
+                        "mono-label": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-base": ["Inter"],
+                        "mono-stat": ["JetBrains Mono"],
+                        "label-xs": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "mono-label": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "mono-stat": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "label-xs": ["11px", { "lineHeight": "16px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0d0d0d; color: #e2e2e2; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden font-body-sm text-body-sm bg-[#0d0d0d] text-[#e2e2e2]">
+<!-- Sidebar -->
+<aside class="w-[220px] flex-shrink-0 flex flex-col border-r border-[#2c2c2c] bg-[#161616]">
+<!-- Brand -->
+<div class="h-[60px] flex items-center px-4 gap-3 border-b border-[#2c2c2c]">
+<img alt="RepoLense Logo" class="w-6 h-6 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ujpLiQrVHyIRBYRfpgcw22gNEEMxt-hpNQ_--Z2A1PJ42iQmCLFFOJsdoRTnRUlydq5kOqrCl3-fByA_hOm7AC3-ymZvqdOHLnYZPfA-Tjp6DOzG5BzXRgDG0pTtoJbF7BmlbGI3Ih6wNnE1GAZ7_4j4EV8Bl7_-2_RYVT-d-59dtveNB7v_TcXKo02qZJhI-GnP3CVK2q2sUHrMqeUTtET8u0zXjx7sKG2H9237pcE0G3BSXWdd5o-0ec"/>
+<span class="font-semibold text-[13px] tracking-tight">RepoLense</span>
+</div>
+<!-- Navigation -->
+<nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
+<a class="flex items-center px-4 h-[44px] text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] mr-3" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center px-4 h-[44px] bg-[#1a1a1a] text-[#e2e2e2] border-l-2 border-[#8b5cf6] relative -ml-[2px] w-[calc(100%+2px)] transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] mr-3 text-[#8b5cf6]" data-icon="account_tree">account_tree</span>
+                Repositories
+            </a>
+<a class="flex items-center px-4 h-[44px] text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] mr-3" data-icon="hub">hub</span>
+                Dependencies
+            </a>
+<a class="flex items-center px-4 h-[44px] text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] mr-3" data-icon="rocket_launch">rocket_launch</span>
+                Deployments
+            </a>
+<a class="flex items-center px-4 h-[44px] text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] mr-3" data-icon="monitoring">monitoring</span>
+                Analytics
+            </a>
+</nav>
+<!-- Footer -->
+<div class="p-4 border-t border-[#2c2c2c] flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-[#2c2c2c] flex items-center justify-center text-[12px] font-semibold text-[#e2e2e2]">RK</div>
+<span class="text-[13px] font-medium text-[#e2e2e2]">R. K.</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-[#8a8a8a]" data-icon="settings">settings</span>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden bg-[#0d0d0d]">
+<!-- Top Bar -->
+<header class="h-[60px] flex items-center justify-between px-6 border-b border-[#2c2c2c] flex-shrink-0 bg-[#0d0d0d]">
+<h1 class="text-[16px] font-semibold text-[#e8e8e8]">Repositories</h1>
+<button class="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-[13px] font-medium py-2 px-3.5 rounded transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                Import Repository
+            </button>
+</header>
+<!-- Filters -->
+<div class="px-6 py-4 flex items-center justify-between border-b border-[#2c2c2c] bg-[#0d0d0d]">
+<div class="relative w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-[#8a8a8a]">search</span>
+<input class="w-full bg-[#0d0d0d] border border-[#2c2c2c] rounded text-[13px] text-[#e2e2e2] pl-9 pr-3 py-1.5 focus:border-[#8b5cf6] focus:outline-none focus:ring-0 placeholder-[#555] transition-colors" placeholder="Search repositories..." type="text"/>
+</div>
+<button class="flex items-center gap-2 text-[13px] text-[#e2e2e2] hover:text-white px-3 py-1.5 border border-transparent hover:border-[#2c2c2c] rounded transition-colors">
+                Sort: Recent
+                <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<!-- Repository List -->
+<div class="flex-1 overflow-y-auto">
+<div class="flex flex-col">
+<!-- Row 1 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">vercel/next.js</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">The React Framework for the Web</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Next.js</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        8,432 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
+<span class="text-[12px] text-[#555]">Indexed · 2h ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#f1e05a]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">facebook/react</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">A declarative, efficient, and flexible JavaScript library for building user interfaces.</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">JavaScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">React</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        3,201 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
+<span class="text-[12px] text-[#555]">Indexed · 1d ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">microsoft/vscode</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">Visual Studio Code</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Electron</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        12,847 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
+<span class="text-[12px] text-[#555]">Indexed · 3d ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group bg-[#111111]">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">supabase/supabase</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">The open source Firebase alternative.</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Next.js</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        5,621 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse"></div>
+<span class="text-[12px] text-[#f59e0b]">Indexing... · just now</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#f1e05a]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">tailwindlabs/tailwindcss</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">A utility-first CSS framework for rapid UI development.</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">JavaScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Node</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        892 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
+<span class="text-[12px] text-[#555]">Indexed · 5d ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 6 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group opacity-70 hover:opacity-100">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">prisma/prisma</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">Next-generation ORM for Node.js &amp; TypeScript | PostgreSQL, MySQL, MariaDB, SQL Server, SQLite, MongoDB and CockroachDB</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Node</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        4,103 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#555]"></div>
+<span class="text-[12px] text-[#555]">Pending · —</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 7 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">remix-run/remix</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">Build Better Websites. Create modern, resilient user experiences with web fundamentals.</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Remix</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        2,788 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
+<span class="text-[12px] text-[#555]">Indexed · 1w ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Row 8 -->
+<div class="flex items-center h-[60px] px-6 border-b border-[#1e1e1e] hover:bg-[#111111] transition-colors group opacity-70 hover:opacity-100">
+<div class="flex-1 flex flex-col gap-1 justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#3178c6]"></div>
+<span class="font-mono-label text-[13px] text-[#e8e8e8]">trpc/trpc</span>
+</div>
+<span class="text-[12px] text-[#8a8a8a] truncate pr-4">🧙‍♀️ Move Fast and Break Nothing. End-to-end typesafe APIs made easy.</span>
+</div>
+<div class="w-[180px] flex items-center gap-2">
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">TypeScript</span>
+<span class="font-mono-label text-[11px] bg-[#161616] border border-[#252525] rounded px-1.5 py-0.5 text-[#e2e2e2]">Node</span>
+</div>
+<div class="w-[120px] text-[12px] font-mono-label text-[#8a8a8a] text-right pr-8">
+                        1,044 files
+                    </div>
+<div class="w-[200px] flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#555]"></div>
+<span class="text-[12px] text-[#555]">Pending · —</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#555] group-hover:text-[#e2e2e2] transition-colors cursor-pointer" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+</div>
+<div class="px-6 py-4">
+<span class="text-[12px] text-[#555]">8 repositories</span>
+</div>
+</div>
+</main>
+</body></html>
