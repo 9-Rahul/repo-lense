@@ -89,6 +89,40 @@ export async function generateEmbeddingsBatch(texts: string[], retries = 3, dela
   throw new Error('Failed to generate batched embeddings after all retries');
 }
 
+export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured');
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: texts.map(text => ({
+          model: 'models/gemini-embedding-2',
+          content: { parts: [{ text }] },
+          outputDimensionality: 768,
+          taskType: 'RETRIEVAL_DOCUMENT' 
+        }))
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini Batch Embedding API Error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.embeddings.map((e: any) => e.values);
+  } catch (error) {
+    console.error('[Embedder] Failed to generate batched embeddings via Gemini:', error);
+    throw error;
+  }
+}
+
 // A simple recursive chunker to break files into manageable pieces
 export function chunkCode(content: string, maxTokens = 1500): string[] {
   // Rough heuristic: 1 token ~= 4 characters
