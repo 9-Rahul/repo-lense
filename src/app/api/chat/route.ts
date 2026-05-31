@@ -27,7 +27,8 @@ export async function POST(req: Request) {
     `;
 
     // 3. Format context for Gemini
-    const contextStrings = chunks.map(c => `File: ${c.path}\nContent:\n${c.content}\n`);
+    const typedChunks = chunks as { content: string, path: string }[];
+    const contextStrings = typedChunks.map((c: { content: string, path: string }) => `File: ${c.path}\nContent:\n${c.content}\n`);
     const aggregatedContext = contextStrings.join('\n---\n');
 
     const prompt = `
@@ -60,7 +61,7 @@ ${question}
     const answerText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't generate an answer.";
 
     // 5. Extract unique sources to return alongside the text
-    const uniquePaths = Array.from(new Set(chunks.map(c => c.path)));
+    const uniquePaths = Array.from(new Set(typedChunks.map((c: { path: string }) => c.path)));
 
     return NextResponse.json({ 
       answer: answerText,
