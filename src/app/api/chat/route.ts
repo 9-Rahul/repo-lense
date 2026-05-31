@@ -44,21 +44,59 @@ QUESTION:
 ${question}
 `;
 
-    // 4. Send to Gemini 2.5 Flash
+    // 4. Send to Gemini 2.5 Flash with automatic retries for rate limits
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2 }
-      })
-    });
+    let answerText = "I couldn't generate an answer.";
+    let retries = 5;
+    let delayMs = 3000;
 
-    const data = await response.json();
-    const answerText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't generate an answer.";
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          if (response.status === 429 && attempt < retries) {
+            console.warn(`[Chat] Gemini 2.5 Flash 429 received. Retrying in ${delayMs}ms (Attempt ${attempt}/${retries})...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            delayMs *= 2;
+            continue;
+          }
+          throw new Error(`Gemini GenerateContent API Error: ${response.status} - ${errText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.error && data.error.code === 429) {
+          if (attempt < retries) {
+            console.warn(`[Chat] Gemini internal 429 received. Retrying in ${delayMs}ms (Attempt ${attempt}/${retries})...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            delayMs *= 2;
+            continue;
+          }
+          throw new Error(`Gemini Internal Error: ${data.error.message}`);
+        }
+
+        answerText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't generate an answer.";
+        break; // Success! Break the retry loop
+      } catch (error) {
+        if (attempt === retries) {
+          console.error('[Chat] Failed to generate content via Gemini:', error);
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        delayMs *= 2;
+      }
+    }
 
     // 5. Extract unique sources to return alongside the text
     const uniquePaths = Array.from(new Set(typedChunks.map((c: { path: string }) => c.path)));
