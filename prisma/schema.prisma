@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+model Repository {
+  id          String   @id @default(uuid())
+  url         String   @unique
+  name        String
+  description String?
+  language    String?
+  framework   String?
+  fileCount   Int      @default(0)
+  isIndexed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  files       File[]
+}
+
+model File {
+  id           String   @id @default(uuid())
+  repositoryId String
+  path         String
+  content      String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  chunks       Chunk[]
+  
+  @@unique([repositoryId, path])
+}
+
+model Chunk {
+  id         String   @id @default(uuid())
+  fileId     String
+  content    String   @db.Text
+  embedding  Unsupported("vector(768)")?
+  startIndex Int
+  endIndex   Int
+  
+  file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+}
