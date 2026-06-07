@@ -17,17 +17,19 @@ export interface RepoFile {
 
 export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
   // CRITICAL SECURITY FIX: Strict regex validation to prevent command injection
-  const urlPattern = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-  if (!urlPattern.test(githubUrl)) {
+  // Allow optional trailing slash
+  const urlPattern = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
+  const cleanUrl = githubUrl.trim();
+  if (!urlPattern.test(cleanUrl)) {
     throw new Error('Invalid GitHub URL format for cloning.');
   }
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'repolense-'));
   
   try {
-    console.log(`[GitHub] Cloning ${githubUrl} into ${tempDir}...`);
+    console.log(`[GitHub] Cloning ${cleanUrl} into ${tempDir}...`);
     // Perform a shallow clone to massively speed up the download
-    await execAsync(`git clone --depth 1 "${githubUrl}" "${tempDir}"`);
+    await execAsync(`git clone --depth 1 "${cleanUrl}" "${tempDir}"`);
     
     console.log(`[GitHub] Reading file tree from ${tempDir}...`);
     const files = readDirectory(tempDir, tempDir);

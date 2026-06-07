@@ -5,18 +5,36 @@ import { cloneAndReadRepo } from '@/infrastructure/github/cloner';
 export async function POST(req: Request) {
   let repository: any = null;
   try {
-    const { url } = await req.json();
+    let { url } = await req.json();
 
-    if (!url || !url.startsWith('https://github.com/')) {
-      return NextResponse.json({ error: 'Invalid GitHub URL' }, { status: 400 });
+    if (!url || typeof url !== 'string') {
+      return NextResponse.json({ error: 'Invalid URL provided' }, { status: 400 });
     }
 
-    // Extract owner/repo name
-    const urlParts = url.replace('https://github.com/', '').split('/');
-    if (urlParts.length < 2) {
-      return NextResponse.json({ error: 'Invalid GitHub URL format' }, { status: 400 });
+    url = url.trim();
+
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.hostname !== 'github.com') {
+        return NextResponse.json({ error: 'Only GitHub URLs are supported' }, { status: 400 });
+      }
+
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      if (pathParts.length < 2) {
+        return NextResponse.json({ error: 'Invalid GitHub URL format' }, { status: 400 });
+      }
+
+      const owner = pathParts[0];
+      const repo = pathParts[1].replace(/\.git$/, '');
+      const name = `${owner}/${repo}`;
+      
+      // Reconstruct the clean, canonical URL
+      url = `https://github.com/${name}`;
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
     }
-    const name = `${urlParts[0]}/${urlParts[1].replace('.git', '')}`;
+
+    const name = url.replace('https://github.com/', '');
 
     // Check if repo already exists
     repository = await prisma.repository.findUnique({
