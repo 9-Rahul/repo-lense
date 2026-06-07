@@ -27,20 +27,63 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'repolense-'));
   
   try {
-    console.log(`[GitHub] Cloning ${cleanUrl} into ${tempDir}...`);
+    console.log(`[GitHub] Attempting to clone ${cleanUrl} via git clone...`);
     // Perform a shallow clone to massively speed up the download
     await execAsync(`git clone --depth 1 "${cleanUrl}" "${tempDir}"`);
     
     console.log(`[GitHub] Reading file tree from ${tempDir}...`);
     const files = readDirectory(tempDir, tempDir);
     return files;
-  } catch (error: any) {
-    console.error(`[GitHub] Clone error:`, error);
-    const details = error.stderr || error.message || String(error);
-    throw new Error(`Failed to clone repository: ${details}`);
+  } catch (gitError: any) {
+    console.warn(`[GitHub] git clone failed, trying tarball fallback. Error: ${gitError.message || gitError}`);
+    
+    // Fallback: Download and extract tarball via GitHub API
+    try {
+      const urlParts = cleanUrl.replace('https://github.com/', '').split('/');
+      const owner = urlParts[0];
+      const repo = urlParts[1].replace(/\/$/, ''); // strip trailing slash if any
+      
+      const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball`;
+      console.log(`[GitHub] Downloading tarball from ${tarballUrl}...`);
+      
+      const response = await fetch(tarballUrl, {
+        headers: {
+          'User-Agent': 'RepoLense-Importer'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`GitHub API returned status ${response.status}`);
+      }
+      
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const tarballPath = path.join(tempDir, 'repo.tar.gz');
+      fs.writeFileSync(tarballPath, buffer);
+      
+      console.log(`[GitHub] Extracting tarball using tar CLI...`);
+      await execAsync(`tar -xzf "${tarballPath}" -C "${tempDir}"`);
+      fs.unlinkSync(tarballPath);
+      
+      const list = fs.readdirSync(tempDir);
+      if (list.length === 1 && fs.statSync(path.join(tempDir, list[0])).isDirectory()) {
+        const nestedDir = path.join(tempDir, list[0]);
+        console.log(`[GitHub] Reading files from extracted folder: ${nestedDir}`);
+        return readDirectory(nestedDir, nestedDir);
+      }
+      
+      return readDirectory(tempDir, tempDir);
+    } catch (fallbackError: any) {
+      console.error(`[GitHub] Tarball fallback also failed:`, fallbackError);
+      const details = fallbackError.message || String(fallbackError);
+      throw new Error(`Failed to clone repository: git clone failed (${gitError.message || gitError}), and tarball fallback failed (${details})`);
+    }
   } finally {
     // Always cleanup the temp directory to prevent disk leaks
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      console.error(`[GitHub] Cleanup error:`, cleanupError);
+    }
   }
 }
 
