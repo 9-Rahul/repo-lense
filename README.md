@@ -4,6 +4,8 @@ RepoLens is an AI-powered codebase search and chat assistant. It helps you insta
 
 RepoLens gives you exact answers and tells you **exactly which files and lines of code** it used to find the answer.
 
+![RepoLens Dashboard](./public/dashboard.png)
+
 ---
 
 ## ✨ Features
