@@ -34,9 +34,10 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
     console.log(`[GitHub] Reading file tree from ${tempDir}...`);
     const files = readDirectory(tempDir, tempDir);
     return files;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[GitHub] Clone error:`, error);
-    throw new Error('Failed to clone repository. Make sure the URL is public and valid.');
+    const details = error.stderr || error.message || String(error);
+    throw new Error(`Failed to clone repository: ${details}`);
   } finally {
     // Always cleanup the temp directory to prevent disk leaks
     fs.rmSync(tempDir, { recursive: true, force: true });
