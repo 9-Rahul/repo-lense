@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as tar from 'tar';
 
 const execAsync = promisify(exec);
 
@@ -16,9 +17,8 @@ export interface RepoFile {
 }
 
 export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
-  // CRITICAL SECURITY FIX: Strict regex validation to prevent command injection
-  // Allow optional trailing slash
-  const urlPattern = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
+  // Allow optional trailing slash and optional branch paths
+  const urlPattern = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/tree\/[A-Za-z0-9_./-]+)?\/?$/;
   const cleanUrl = githubUrl.trim();
   if (!urlPattern.test(cleanUrl)) {
     throw new Error('Invalid GitHub URL format for cloning.');
@@ -27,9 +27,16 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'repolense-'));
   
   try {
+    const isBranch = cleanUrl.includes('/tree/');
+    const baseRepoUrl = isBranch ? cleanUrl.split('/tree/')[0] : cleanUrl;
+    const branchName = isBranch ? cleanUrl.split('/tree/')[1].replace(/\/$/, '') : '';
+
     console.log(`[GitHub] Attempting to clone ${cleanUrl} via git clone...`);
-    // Perform a shallow clone to massively speed up the download
-    await execAsync(`git clone --depth 1 "${cleanUrl}" "${tempDir}"`);
+    if (branchName) {
+      await execAsync(`git clone -b "${branchName}" --depth 1 "${baseRepoUrl}" "${tempDir}"`);
+    } else {
+      await execAsync(`git clone --depth 1 "${baseRepoUrl}" "${tempDir}"`);
+    }
     
     console.log(`[GitHub] Reading file tree from ${tempDir}...`);
     const files = readDirectory(tempDir, tempDir);
@@ -43,7 +50,14 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
       const owner = urlParts[0];
       const repo = urlParts[1].replace(/\/$/, ''); // strip trailing slash if any
       
-      const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball`;
+      let branch = '';
+      if (urlParts.length >= 4 && urlParts[2] === 'tree') {
+        branch = urlParts.slice(3).join('/').replace(/\/$/, '');
+      }
+      
+      const tarballUrl = branch 
+        ? `https://api.github.com/repos/${owner}/${repo}/tarball/${branch}`
+        : `https://api.github.com/repos/${owner}/${repo}/tarball`;
       console.log(`[GitHub] Downloading tarball from ${tarballUrl}...`);
       
       const response = await fetch(tarballUrl, {
@@ -60,8 +74,11 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
       const tarballPath = path.join(tempDir, 'repo.tar.gz');
       fs.writeFileSync(tarballPath, buffer);
       
-      console.log(`[GitHub] Extracting tarball using tar CLI...`);
-      await execAsync(`tar -xzf "${tarballPath}" -C "${tempDir}"`);
+      console.log(`[GitHub] Extracting tarball using tar module...`);
+      await tar.x({
+        file: tarballPath,
+        cwd: tempDir
+      });
       fs.unlinkSync(tarballPath);
       
       const list = fs.readdirSync(tempDir);

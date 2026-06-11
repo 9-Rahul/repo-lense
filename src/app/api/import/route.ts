@@ -26,7 +26,12 @@ export async function POST(req: Request) {
 
       const owner = pathParts[0];
       const repo = pathParts[1].replace(/\.git$/, '');
-      const name = `${owner}/${repo}`;
+      let name = `${owner}/${repo}`;
+      
+      if (pathParts.length >= 4 && pathParts[2] === 'tree') {
+        const branch = pathParts.slice(3).join('/');
+        name = `${owner}/${repo}/tree/${branch}`;
+      }
       
       // Reconstruct the clean, canonical URL
       url = `https://github.com/${name}`;
@@ -35,6 +40,7 @@ export async function POST(req: Request) {
     }
 
     const name = url.replace('https://github.com/', '');
+    const repoIdentifier = name.split('/tree/')[0];
 
     // Check if repo already exists
     repository = await prisma.repository.findUnique({
@@ -46,7 +52,7 @@ export async function POST(req: Request) {
     }
 
     // Check Repository Size via GitHub API to prevent Vercel /tmp DoS (Max 200MB)
-    const githubApiResponse = await fetch(`https://api.github.com/repos/${name}`);
+    const githubApiResponse = await fetch(`https://api.github.com/repos/${repoIdentifier}`);
     if (githubApiResponse.ok) {
       const repoData = await githubApiResponse.json();
       // repoData.size is in KB. 200MB = 204,800 KB
