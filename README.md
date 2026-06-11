@@ -1,6 +1,6 @@
 # 🔍 RepoLens
 
-RepoLens is an AI-powered codebase search and chat assistant. It helps you instantly understand any code repository by importing it, breaking the files into smart chunks, storing them in a database using AI vectors, and letting you ask questions in natural language. 
+RepoLens is an AI-powered codebase intelligence and security assistant. It helps you instantly understand any code repository by importing it, breaking the files into smart chunks, storing them in a database using AI vectors, and letting you ask questions in natural language. Additionally, it now features an **Attack Surface Analyzer** that visually maps potential vulnerabilities across your infrastructure.
 
 RepoLens gives you exact answers and tells you **exactly which files and lines of code** it used to find the answer.
 
@@ -15,19 +15,21 @@ RepoLens gives you exact answers and tells you **exactly which files and lines o
 - **⚡ Supercharged Search (pgvector)**: Uses PostgreSQL's vector extension to run incredibly fast, semantic search across your entire codebase.
 - **💬 AI Chat with Citations**: Ask how a feature is built, where a bug might be, or how modules connect. You receive an answer from Google Gemini, accompanied by a list of source files used as context.
 - **🛡️ Rate-Limit Protection**: Smart retry logic with exponential backoff guarantees that the AI won't break or error out due to rate limits during large imports.
+- **🎯 Attack Surface Analyzer (NEW)**: An interactive, node-based visual graph (powered by React Flow) that maps out your architecture's potential threat vectors, gateways, and critical data stores to help you generate instant remediation plans.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [Next.js](https://nextjs.org/) (App Router) & [React](https://react.dev/)
-- **Database**: [PostgreSQL](https://www.postgresql.org/) with the `pgvector` extension (ideal for Supabase)
-- **ORM (Database Tool)**: [Prisma](https://www.prisma.io/)
+- **Database**: [PostgreSQL](https://www.postgresql.org/) with the `pgvector` extension
+- **ORM**: [Prisma](https://www.prisma.io/)
 - **AI Models**:
   - `models/gemini-embedding-2` (for creating code search vectors)
   - `gemini-2.5-flash` (for understanding the code and answering questions)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
+- **Visuals & Graphs**: [@xyflow/react](https://reactflow.dev/) (for interactive threat modeling)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/) & Material Symbols
 
 ---
 
@@ -94,20 +96,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 
 ---
 
-## 🧩 How It Works (The Retrieval-Augmented Generation / RAG Flow)
+## 🧩 How It Works (The Intelligence Flow)
 
-Here is a simple, high-level look at what happens behind the scenes:
+Here is a high-level look at what happens behind the scenes:
 
 ```mermaid
 graph TD
     A[User pastes GitHub Link] --> B[Cloner Clones Code Files]
     B --> C[Chunker splits files into smaller code blocks]
     C --> D[Embedder turns code blocks into 768-dimension vectors]
-    D --> E[Saves Code Blocks & Vectors to PostgreSQL pgvector]
+    D --> E[(PostgreSQL pgvector)]
     F[User asks a question] --> G[Embedder turns question into a vector]
     G --> H[Cosine Similarity Search finds top 10 most relevant code blocks]
     H --> I[Gemini 2.5 Flash reads code blocks and generates the final answer]
     I --> J[User gets answer + exact source file links]
+    E -.-> K[Attack Surface Analyzer maps architecture]
+    K -.-> L[Visual Threat Graph & Remediation Plans]
 ```
 
 ### 1. Cloning & Storing
@@ -128,6 +132,11 @@ When you ask a question (e.g. *"How does the authentication flow work?"*):
 - It performs a **Cosine Similarity Search** (using the `pgvector` `<=>` operator) in your database.
 - It quickly fetches the **top 10 most similar code blocks** that are highly relevant to your question.
 - It feeds these 10 code blocks into **Gemini 2.5 Flash**, which reads them, synthesizes a clear response, and cites the exact files where the code lives.
+
+### 4. Interactive Threat Modeling
+Using the `@xyflow/react` library, RepoLens now visually interprets the extracted system architecture:
+- Renders an **Attack Vector Graph** showcasing Gateways, APIs, and Data stores.
+- Highlights paths and potential vulnerabilities to assist in generating rapid remediation plans.
 
 ---
 
