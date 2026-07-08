@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RepoLense - Understand any codebase</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#3f2300",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface-variant": "#333535",
+                        "primary-fixed-dim": "#d0bcff",
+                        "on-background": "#e2e2e2",
+                        "inverse-on-surface": "#2f3131",
+                        "on-primary-container": "#340080",
+                        "primary-fixed": "#e9ddff",
+                        "tertiary": "#ffb869",
+                        "secondary": "#4edea3",
+                        "on-primary": "#3c0091",
+                        "tertiary-container": "#ca801e",
+                        "on-primary-fixed-variant": "#5516be",
+                        "background": "#121414",
+                        "on-surface": "#e2e2e2",
+                        "tertiary-fixed": "#ffdcbb",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#a078ff",
+                        "on-primary-fixed": "#23005c",
+                        "surface-container-lowest": "#0c0f0f",
+                        "surface": "#121414",
+                        "secondary-container": "#00a572",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-surface-variant": "#cbc3d7",
+                        "surface-container-high": "#282a2b",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#002113",
+                        "surface-container": "#1e2020",
+                        "on-secondary": "#003824",
+                        "surface-container-low": "#1a1c1c",
+                        "outline": "#958ea0",
+                        "tertiary-fixed-dim": "#ffb869",
+                        "on-secondary-container": "#00311f",
+                        "primary": "#d0bcff",
+                        "on-tertiary-fixed-variant": "#673d00",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-tertiary-fixed": "#2c1700",
+                        "surface-dim": "#121414",
+                        "surface-bright": "#38393a",
+                        "error": "#ffb4ab",
+                        "inverse-primary": "#6d3bd7",
+                        "surface-tint": "#d0bcff",
+                        "surface-container-highest": "#333535",
+                        "on-tertiary": "#482900",
+                        "outline-variant": "#494454",
+                        "inverse-surface": "#e2e2e2",
+                        "repo-bg": "#0d0d0d",
+                        "repo-surface": "#161616",
+                        "repo-border": "#2c2c2c",
+                        "repo-accent": "#8b5cf6",
+                        "repo-text-muted": "#8a8a8a",
+                        "repo-success": "#10b981",
+                        "repo-divider": "#1e1e1e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem",
+                        "ui": "6px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "gutter": "1px",
+                        "sm": "8px",
+                        "margin-mobile": "12px",
+                        "margin-desktop": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-mono": ["JetBrains Mono"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "label-mono": ["12px", {"lineHeight": "16px", "fontWeight": "450"}],
+                        "body-lg": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "hero-h1": ["52px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "hero-sub": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0d0d0d; color: #e8e8e8; font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 16px; line-height: 1; display: inline-block; text-transform: none; letter-spacing: normal; word-wrap: normal; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; -moz-osx-font-smoothing: grayscale; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full flex justify-between items-center h-12 px-margin-desktop max-w-full mx-auto border-b border-outline-variant bg-background dark:bg-background z-50">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">RepoLense</div>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Product</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Docs</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Changelog</a>
+</div>
+<div class="flex items-center gap-4">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Sign In</a>
+<button class="bg-repo-accent text-white px-3 py-1 rounded text-[13px] font-medium border border-repo-accent hover:opacity-90 transition-opacity">Get Started</button>
+</div>
+</nav>
+<main class="flex-grow pt-12 flex flex-col">
+<!-- Hero Section -->
+<section class="w-full max-w-7xl mx-auto px-margin-desktop py-24 flex flex-col lg:flex-row items-center gap-12 lg:gap-8 min-h-[716px]">
+<!-- Left Content (55%) -->
+<div class="w-full lg:w-[55%] flex flex-col items-start">
+<div class="font-label-mono text-[11px] text-repo-text-muted border border-repo-border px-2 py-1 rounded-sm mb-6 inline-flex items-center gap-1.5 bg-repo-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-repo-success opacity-80"></span>
+                    Open source · Free to use
+                </div>
+<h1 class="text-hero-h1 text-on-background mb-6 leading-tight">
+                    Understand any codebase.
+                </h1>
+<p class="text-hero-sub text-repo-text-muted mb-8 max-w-[420px]">
+                    Import a GitHub repository and start asking questions. Find where things happen, explore the structure, and understand unfamiliar code faster.
+                </p>
+<div class="flex flex-row gap-3">
+<button class="bg-repo-accent text-white px-4 py-2 rounded text-[13px] font-medium border border-repo-accent hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+                        Import a Repository
+                    </button>
+<button class="bg-transparent text-[#e8e8e8] px-4 py-2 rounded text-[13px] font-medium border border-repo-border hover:bg-repo-surface transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 14px;">play_circle</span>
+                        View Demo
+                    </button>
+</div>
+</div>
+<!-- Right Preview (45%) -->
+<div class="w-full lg:w-[45%]">
+<div class="bg-repo-surface border border-repo-border rounded-ui shadow-2xl overflow-hidden flex flex-col h-[400px]">
+<!-- Preview Header -->
+<div class="h-10 border-b border-repo-divider flex items-center px-4 justify-between bg-[#161616]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-repo-text-muted" style="font-size: 14px;">folder</span>
+<span class="font-label-mono text-[12px] text-on-surface">vercel/next.js</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-repo-success"></span>
+<span class="font-label-sm text-[10px] text-repo-success uppercase tracking-wider">Indexed</span>
+</div>
+</div>
+<!-- Preview Body -->
+<div class="flex-grow flex flex-col p-4 gap-4 overflow-hidden bg-[#161616]">
+<!-- Summary -->
+<div>
+<div class="font-label-sm text-repo-text-muted uppercase mb-2">Summary</div>
+<p class="font-body-md text-[12px] text-on-surface-variant leading-relaxed">
+                                The React Framework for the Web. Next.js enables you to create full-stack Web applications by extending the latest React features, and integrating powerful Rust-based JavaScript tooling for the fastest builds.
+                            </p>
+</div>
+<div class="w-full h-px bg-repo-divider"></div>
+<!-- Structure & Last Question Layout -->
+<div class="flex gap-4 flex-grow">
+<!-- Structure -->
+<div class="w-1/2 flex flex-col">
+<div class="font-label-sm text-repo-text-muted uppercase mb-2">Structure</div>
+<div class="font-label-mono text-[11px] text-on-surface-variant space-y-1.5">
+<div class="flex items-center gap-1.5 hover:text-repo-accent cursor-default"><span class="material-symbols-outlined text-[12px]">folder</span> /src</div>
+<div class="flex items-center gap-1.5 hover:text-repo-accent cursor-default ml-3"><span class="material-symbols-outlined text-[12px]">folder</span> /pages</div>
+<div class="flex items-center gap-1.5 hover:text-repo-accent cursor-default ml-3"><span class="material-symbols-outlined text-[12px]">folder</span> /components</div>
+<div class="flex items-center gap-1.5 hover:text-repo-accent cursor-default ml-3"><span class="material-symbols-outlined text-[12px]">folder</span> /lib</div>
+</div>
+</div>
+<div class="w-px bg-repo-divider h-full"></div>
+<!-- Last Question -->
+<div class="w-1/2 flex flex-col">
+<div class="font-label-sm text-repo-text-muted uppercase mb-2">Last Query</div>
+<div class="bg-[#1e1e1e] border-l-2 border-repo-accent p-2 mb-2 rounded-r-sm">
+<span class="font-body-md text-[11px] text-on-surface">"How does authentication work?"</span>
+</div>
+<div class="font-label-sm text-repo-text-muted mb-1">Referenced:</div>
+<div class="font-label-mono text-[10px] text-on-surface-variant space-y-1 flex flex-col">
+<span class="bg-[#0d0d0d] border border-repo-border px-1.5 py-0.5 rounded-sm inline-flex items-center gap-1 truncate w-fit max-w-full"><span class="material-symbols-outlined text-[10px]">description</span> middleware.ts</span>
+<span class="bg-[#0d0d0d] border border-repo-border px-1.5 py-0.5 rounded-sm inline-flex items-center gap-1 truncate w-fit max-w-full"><span class="material-symbols-outlined text-[10px]">description</span> auth/[...nextauth]/route.ts</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Workflow Section -->
+<section class="w-full border-t border-repo-divider bg-repo-bg py-24">
+<div class="max-w-7xl mx-auto px-margin-desktop">
+<div class="mb-12">
+<h2 class="text-[20px] font-semibold text-on-background mb-1">How it works</h2>
+<p class="text-repo-text-muted font-body-md text-[13px]">Five steps from import to understanding.</p>
+</div>
+<div class="flex flex-col md:flex-row items-center gap-4 overflow-x-auto pb-4 hide-scrollbar">
+<!-- Step 1 -->
+<div class="flex-shrink-0 w-full md:w-[220px] bg-repo-surface border border-repo-border rounded-ui p-4 flex flex-col h-[180px] justify-between relative">
+<div class="font-label-mono text-[10px] text-repo-text-muted absolute top-3 right-3">01 Import</div>
+<div class="mt-6">
+<div class="font-body-md text-[12px] text-on-surface mb-3">Target Repository</div>
+<div class="bg-[#0d0d0d] border border-repo-border rounded px-2 py-1.5 font-label-mono text-[10px] text-repo-text-muted truncate mb-2">
+                                https://github.com/vercel/next.js
+                            </div>
+<div class="w-full bg-repo-accent text-white text-center py-1.5 rounded text-[11px] font-medium border border-repo-accent cursor-default">Import</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-repo-divider hidden md:block" style="font-size: 20px;">arrow_forward</span>
+<!-- Step 2 -->
+<div class="flex-shrink-0 w-full md:w-[220px] bg-repo-surface border border-repo-border rounded-ui p-4 flex flex-col h-[180px] justify-between relative">
+<div class="font-label-mono text-[10px] text-repo-text-muted absolute top-3 right-3">02 Index</div>
+<div class="mt-6 flex flex-col gap-2">
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-repo-success text-[14px]">check_circle</span><span class="font-label-mono text-[10px] text-on-surface-variant">Cloning</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-repo-success text-[14px]">check_circle</span><span class="font-label-mono text-[10px] text-on-surface-variant">Reading Files</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-repo-success text-[14px]">check_circle</span><span class="font-label-mono text-[10px] text-on-surface-variant">Processing Code</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-repo-accent text-[14px] animate-pulse">sync</span><span class="font-label-mono text-[10px] text-on-surface">Building Index</span></div>
+</div>
+</div>
+<span class="material-symbols-outlined text-repo-divider hidden md:block" style="font-size: 20px;">arrow_forward</span>
+<!-- Step 3 -->
+<div class="flex-shrink-0 w-full md:w-[220px] bg-repo-surface border border-repo-border rounded-ui p-4 flex flex-col h-[180px] relative overflow-hidden">
+<div class="font-label-mono text-[10px] text-repo-text-muted absolute top-3 right-3 z-10 bg-repo-surface pl-2">03 Overview</div>
+<div class="mt-6 pt-1">
+<div class="font-body-md text-[11px] font-medium text-on-surface mb-1">Repository Map</div>
+<div class="font-label-mono text-[9px] text-repo-text-muted mb-2 line-clamp-2">Overview of project architecture.</div>
+<div class="space-y-1">
+<div class="h-3 w-3/4 bg-[#1e1e1e] rounded-sm"></div>
+<div class="h-3 w-1/2 bg-[#1e1e1e] rounded-sm ml-2"></div>
+<div class="h-3 w-2/3 bg-[#1e1e1e] rounded-sm ml-2"></div>
+<div class="h-3 w-1/3 bg-[#1e1e1e] rounded-sm ml-4"></div>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-repo-divider hidden md:block" style="font-size: 20px;">arrow_forward</span>
+<!-- Step 4 -->
+<div class="flex-shrink-0 w-full md:w-[220px] bg-repo-surface border border-repo-border rounded-ui p-4 flex flex-col h-[180px] justify-between relative">
+<div class="font-label-mono text-[10px] text-repo-text-muted absolute top-3 right-3">04 Ask</div>
+<div class="mt-auto mb-2 flex flex-col gap-2">
+<div class="bg-[#1e1e1e] border-l-2 border-repo-accent p-2 rounded-r-sm self-end w-[80%]">
+<span class="font-body-md text-[10px] text-on-surface">How does auth work?</span>
+</div>
+<div class="bg-[#0d0d0d] border border-repo-border rounded flex items-center justify-between p-1 mt-2">
+<span class="font-label-mono text-[9px] text-repo-text-muted pl-1">Ask a question...</span>
+<div class="bg-repo-surface border border-repo-border p-0.5 rounded-sm"><span class="material-symbols-outlined text-[10px] text-on-surface">send</span></div>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-repo-divider hidden md:block" style="font-size: 20px;">arrow_forward</span>
+<!-- Step 5 -->
+<div class="flex-shrink-0 w-full md:w-[220px] bg-repo-surface border border-repo-border rounded-ui p-4 flex flex-col h-[180px] relative">
+<div class="font-label-mono text-[10px] text-repo-text-muted absolute top-3 right-3">05 Files</div>
+<div class="mt-8 flex flex-col gap-1.5">
+<div class="flex items-center gap-2 p-1.5 hover:bg-[#1e1e1e] rounded border border-transparent hover:border-repo-border transition-colors">
+<span class="material-symbols-outlined text-[12px] text-repo-accent">description</span>
+<span class="font-label-mono text-[10px] text-on-surface truncate">auth.ts</span>
+</div>
+<div class="flex items-center gap-2 p-1.5 hover:bg-[#1e1e1e] rounded border border-transparent hover:border-repo-border transition-colors">
+<span class="material-symbols-outlined text-[12px] text-repo-text-muted">description</span>
+<span class="font-label-mono text-[10px] text-on-surface truncate">middleware.ts</span>
+</div>
+<div class="flex items-center gap-2 p-1.5 hover:bg-[#1e1e1e] rounded border border-transparent hover:border-repo-border transition-colors">
+<span class="material-symbols-outlined text-[12px] text-repo-text-muted">code</span>
+<span class="font-label-mono text-[10px] text-on-surface truncate">login/page.tsx</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full mt-auto flex flex-col md:flex-row justify-between items-center py-md px-margin-desktop border-t border-outline-variant bg-background dark:bg-background">
+<div class="font-label-mono text-label-mono text-on-surface mb-2 md:mb-0">
+            © 2024 RepoLense. Status: All Systems Operational. v2.4.0
+        </div>
+<div class="flex gap-4">
+<a class="font-label-mono text-label-mono text-secondary dark:text-secondary hover:text-on-surface transition-colors" href="#">GitHub</a>
+<a class="font-label-mono text-label-mono text-secondary dark:text-secondary hover:text-on-surface transition-colors" href="#">X</a>
+</div>
+</footer>
+</body></html>
