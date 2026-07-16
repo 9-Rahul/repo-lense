@@ -1,25 +1,25 @@
-# 🔍 RepoLens
+# RepoLens
 
-RepoLens is an AI-powered codebase intelligence and security assistant. It helps you instantly understand any code repository by importing it, breaking the files into smart chunks, storing them in a database using AI vectors, and letting you ask questions in natural language. Additionally, it features an **Attack Surface Analyzer** that visually maps potential vulnerabilities across your infrastructure.
+RepoLens is an AI-powered codebase intelligence and security assistant. It helps you instantly understand any code repository by importing it, breaking the files into smart chunks, storing them in a database using AI vectors, and letting you ask questions in natural language. Additionally, it features an Attack Surface Analyzer that visually maps potential vulnerabilities across your infrastructure.
 
-RepoLens provides exact answers, citing **exactly which files and lines of code** were used to find the answer.
+RepoLens provides exact answers, citing exactly which files and lines of code were used to find the answer.
 
 ![RepoLens Dashboard](./public/dashboard.png)
 
 ---
 
-## ✨ Features
+## Features
 
-- **📂 Smart Repository Importer**: Accepts public GitHub links and downloads them using a hybrid cloning strategy (Git clone with GitHub Tarball API fallback).
-- **🧠 Code File Filter & Smart Chunking**: Targets source-code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.md`, `.json`) while filtering out bulky dependencies and locks. Splits large files into logical blocks to preserve context structure.
-- **⚡ Semantic Search (pgvector)**: Uses PostgreSQL's vector extension to run fast cosine similarity searches across your codebase.
-- **💬 AI Chat with Citations**: Ask how a feature is built, where a bug might be, or how modules connect. Gemini 2.5 Flash generates responses cited with source file references.
-- **🛡️ Rate-Limit & Backoff Protection**: Automatically handles rate-limit headers and pauses index operations using exponential backoff to handle large repositories smoothly.
-- **🎯 Attack Surface Analyzer**: An interactive, node-based visual graph (powered by React Flow) that maps out your architecture's potential threat vectors, gateways, and critical data stores to help you generate instant remediation plans.
+- **Smart Repository Importer**: Accepts public GitHub links and downloads them using a hybrid cloning strategy (Git clone with GitHub Tarball API fallback).
+- **Code File Filter & Smart Chunking**: Targets source-code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.md`, `.json`) while filtering out bulky dependencies and locks. Splits large files into logical blocks to preserve context structure.
+- **Semantic Search (pgvector)**: Uses PostgreSQL's vector extension to run fast cosine similarity searches across your codebase.
+- **AI Chat with Citations**: Ask how a feature is built, where a bug might be, or how modules connect. Gemini 2.5 Flash generates responses cited with source file references.
+- **Rate-Limit & Backoff Protection**: Automatically handles rate-limit headers and pauses index operations using exponential backoff to handle large repositories smoothly.
+- **Attack Surface Analyzer**: An interactive, node-based visual graph (powered by React Flow) that maps out your architecture's potential threat vectors, gateways, and critical data stores to help you generate instant remediation plans.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: [Next.js](https://nextjs.org/) & [React](https://react.dev/)
 - **Database**: [PostgreSQL](https://www.postgresql.org/) with the `pgvector` extension
@@ -33,7 +33,7 @@ RepoLens provides exact answers, citing **exactly which files and lines of code*
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 Follow these steps to run RepoLens locally:
 
@@ -88,7 +88,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 
 ---
 
-## 🧩 How It Works (The Intelligence Flow)
+## How It Works (The Intelligence Flow)
 
 Here is a high-level look at what happens behind the scenes:
 
@@ -135,7 +135,7 @@ Using `@xyflow/react`, RepoLens visually interprets the extracted system archite
 
 ---
 
-## 💡 Troubleshooting
+## Troubleshooting
 
 - **429 Rate Limit Errors**: If you import a repository with hundreds of files, you might hit Gemini API limits. RepoLens includes an automated retry system with exponential backoff to pause and continue indexing without failing.
 - **Database Vector Errors**: Ensure that your PostgreSQL database has `pgvector` installed and enabled. If you use Supabase, the extension is enabled automatically through the `schema.prisma` file configuration.
