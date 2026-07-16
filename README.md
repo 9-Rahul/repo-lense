@@ -4,6 +4,7 @@ RepoLens is an AI-powered codebase intelligence and security assistant. It helps
 
 RepoLens provides exact answers, citing exactly which files and lines of code were used to find the answer.
 
+
 ![RepoLens Dashboard](./public/dashboard.png)
 
 ---
