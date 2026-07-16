@@ -9,7 +9,6 @@ RepoLens provides exact answers, citing exactly which files and lines of code we
 ---
 
 ## Features
-
 - **Smart Repository Importer**: Accepts public GitHub links and downloads them using a hybrid cloning strategy (Git clone with GitHub Tarball API fallback).
 - **Code File Filter & Smart Chunking**: Targets source-code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.md`, `.json`) while filtering out bulky dependencies and locks. Splits large files into logical blocks to preserve context structure.
 - **Semantic Search (pgvector)**: Uses PostgreSQL's vector extension to run fast cosine similarity searches across your codebase.
