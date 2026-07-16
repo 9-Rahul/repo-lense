@@ -27,12 +27,12 @@ export async function POST(req: Request) {
       const owner = pathParts[0];
       const repo = pathParts[1].replace(/\.git$/, '');
       let name = `${owner}/${repo}`;
-      
+
       if (pathParts.length >= 4 && pathParts[2] === 'tree') {
         const branch = pathParts.slice(3).join('/');
         name = `${owner}/${repo}/tree/${branch}`;
       }
-      
+
       // Reconstruct the clean, canonical URL
       url = `https://github.com/${name}`;
     } catch (e) {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Repository is too large (${Math.round(repoData.size / 1024)}MB). Maximum size is 200MB.` }, { status: 413 });
       }
     } else if (githubApiResponse.status === 404) {
-        return NextResponse.json({ error: 'Repository not found or is private.' }, { status: 404 });
+      return NextResponse.json({ error: 'Repository not found or is private.' }, { status: 404 });
     }
 
     // 1. Create Repo in DB (pending state)
@@ -98,15 +98,15 @@ export async function POST(req: Request) {
     });
 
     // Note: Embeddings and Chunking will be triggered from here next!
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       message: 'Repository cloned and files stored successfully',
       repository
     });
 
   } catch (error: any) {
     console.error('Import error:', error);
-    
+
     // Clean up database if we created the repository record but cloning/storing failed
     if (repository && repository.id) {
       try {
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
         console.error('Failed to clean up repository record after error:', dbError);
       }
     }
-    
+
     return NextResponse.json({ error: error.message || 'Failed to import repository' }, { status: 500 });
   }
 }
