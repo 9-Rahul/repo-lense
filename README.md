@@ -132,6 +132,11 @@ Using `@xyflow/react`, RepoLens visually interprets the extracted system archite
 - Renders an **Attack Vector Graph** showcasing Gateways, APIs, and Data stores.
 - Highlights paths and potential vulnerabilities to assist in generating rapid remediation plans.
 
+### 4. Interactive Threat Modeling
+Using the `@xyflow/react` library, RepoLens now visually interprets the extracted system architecture:
+- Renders an **Attack Vector Graph** showcasing Gateways, APIs, and Data stores.
+- Highlights paths and potential vulnerabilities to assist in generating rapid remediation plans.
+
 ---
 
 ## Troubleshooting
