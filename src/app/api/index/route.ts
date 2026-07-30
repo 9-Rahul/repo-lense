@@ -46,33 +46,38 @@ export async function POST(req: Request) {
       
       const embeddings = await generateEmbeddingsBatch(batch.map(b => b.text), 5, 3000);
       
-      // Insert into PostgreSQL
+      // Insert into PostgreSQL using a single bulk query
+      const valuesStr = [];
+      const params = [];
+      let paramIndex = 1;
+
       for (let j = 0; j < batch.length; j++) {
         const chunkData = batch[j];
         const vector = embeddings[j];
         
         if (!vector) continue; // Skip if embedding failed for some reason
         
-        const vectorString = `[${vector.join(',')}]`;
-
-        await prisma.$executeRaw`
-          INSERT INTO "Chunk" (id, "fileId", content, "startIndex", "endIndex", embedding)
-          VALUES (
-            gen_random_uuid(), 
-            ${chunkData.fileId}, 
-            ${chunkData.text}, 
-            0, 
-            ${chunkData.text.length}, 
-            ${vectorString}::vector
-          )
-        `;
+        valuesStr.push(`(gen_random_uuid(), $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}::vector)`);
+        params.push(
+          chunkData.fileId,
+          chunkData.text,
+          0,
+          chunkData.text.length,
+          `[${vector.join(',')}]`
+        );
         totalChunks++;
       }
-      
-      // Small delay between batches to respect rate limits
-      if (i + BATCH_SIZE < allFileChunks.length) {
-        await delay(3000); 
+
+      if (valuesStr.length > 0) {
+        const query = `
+          INSERT INTO "Chunk" (id, "fileId", content, "startIndex", "endIndex", embedding)
+          VALUES ${valuesStr.join(', ')}
+        `;
+        await prisma.$executeRawUnsafe(query, ...params);
       }
+      
+      // Note: We rely on generateEmbeddingsBatch's built-in retry and exponential backoff
+      // instead of hardcoded delays between batches, maximizing throughput.
     }
 
     // Mark repository as indexed
