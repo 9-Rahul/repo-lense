@@ -1,7 +1,7 @@
 import { prisma } from '@/infrastructure/database/prisma';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Code2, FolderTree, Cpu, ArrowLeft, ArrowRight, MessageSquare, Terminal } from 'lucide-react';
+import { Code2, FolderTree, Cpu, ArrowLeft, Terminal } from 'lucide-react';
 import ChatInterface from '@/features/chat/ChatInterface';
 import DeleteRepoButton from '@/features/repositories/DeleteRepoButton';
 
@@ -9,14 +9,22 @@ export const dynamic = 'force-dynamic';
 
 export default async function RepositoryOverview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  
+
   const repository = await prisma.repository.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      language: true,
+      framework: true,
+      fileCount: true,
+      isIndexed: true,
       files: {
-        select: { path: true }
-      }
-    }
+        select: { path: true },
+        take: 300,
+      },
+    },
   });
 
   if (!repository) {
@@ -27,32 +35,42 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
     redirect(`/repo/${id}/indexing`);
   }
 
-  const filePaths = repository.files.map(f => f.path);
-  const isTypeScript = filePaths.some(p => p.endsWith('.ts') || p.endsWith('.tsx'));
-  const isReact = filePaths.some(p => p.endsWith('.tsx') || p.endsWith('.jsx'));
-  const hasPrisma = filePaths.some(p => p.includes('schema.prisma'));
-  const isNextJs = filePaths.some(p => p.includes('next.config'));
+  const filePaths = repository.files.map((f) => f.path);
+  const isTypeScript =
+    repository.language === 'TypeScript' ||
+    filePaths.some((p) => p.endsWith('.ts') || p.endsWith('.tsx'));
+  const isReact =
+    repository.framework === 'React' ||
+    filePaths.some((p) => p.endsWith('.tsx') || p.endsWith('.jsx'));
+  const hasPrisma = filePaths.some((p) => p.includes('schema.prisma'));
+  const isNextJs =
+    repository.framework === 'Next.js' ||
+    filePaths.some((p) => p.includes('next.config'));
 
   const technologies = [
     isTypeScript && 'TypeScript',
+    !isTypeScript && repository.language,
     isReact && 'React',
     isNextJs && 'Next.js',
     hasPrisma && 'Prisma',
-    'PostgreSQL'
+    'PostgreSQL',
   ].filter(Boolean) as string[];
 
   const folders = new Set<string>();
-  filePaths.forEach(p => {
-    const parts = p.split('/');
-    if (parts.length > 1) folders.add(parts[0]);
-  });
-  const topFolders = Array.from(folders).slice(0, 8);
+  for (const p of filePaths) {
+    const slashIdx = p.indexOf('/');
+    if (slashIdx > 0) {
+      folders.add(p.slice(0, slashIdx));
+      if (folders.size >= 8) break;
+    }
+  }
+  const topFolders = Array.from(folders);
 
   const suggestedQuestions = [
-    "Where is the main entry point of the application?",
-    "How does authentication and authorization work?",
-    "Where are the database models defined?",
-    "How is routing configured?"
+    'Where is the main entry point of the application?',
+    'How does authentication and authorization work?',
+    'Where are the database models defined?',
+    'How is routing configured?',
   ];
 
   return (
@@ -75,27 +93,30 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
         <div className="inline-flex items-center justify-center p-3 bg-accent rounded-xl border border-border mb-4">
           <Terminal className="w-6 h-6 text-foreground" />
         </div>
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-          {repository.name}
-        </h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{repository.name}</h1>
         <p className="text-lg text-muted max-w-2xl leading-relaxed">
-          {repository.description || "An imported repository codebase ready for contextual search and exploration."}
+          {repository.description ||
+            'An imported repository codebase ready for contextual search and exploration.'}
         </p>
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="p-6 rounded-xl border border-border bg-background flex flex-col gap-3">
               <Cpu className="w-5 h-5 text-muted" />
               <h3 className="font-medium">Technologies</h3>
               <div className="flex flex-wrap gap-2 mt-auto">
-                {technologies.length > 0 ? technologies.map(tech => (
-                  <span key={tech} className="px-2.5 py-1 text-xs font-medium bg-accent border border-border rounded-md">
-                    {tech}
-                  </span>
-                )) : (
+                {technologies.length > 0 ? (
+                  technologies.map((tech) => (
+                    <span
+                      key={tech}
+                      className="px-2.5 py-1 text-xs font-medium bg-accent border border-border rounded-md"
+                    >
+                      {tech}
+                    </span>
+                  ))
+                ) : (
                   <span className="text-muted text-sm">Various</span>
                 )}
               </div>
@@ -105,8 +126,11 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
               <FolderTree className="w-5 h-5 text-muted" />
               <h3 className="font-medium">Architecture</h3>
               <div className="flex flex-wrap gap-2 mt-auto">
-                {topFolders.map(folder => (
-                  <span key={folder} className="px-2.5 py-1 text-xs font-medium bg-accent border border-border rounded-md font-mono">
+                {topFolders.map((folder) => (
+                  <span
+                    key={folder}
+                    className="px-2.5 py-1 text-xs font-medium bg-accent border border-border rounded-md font-mono"
+                  >
                     /{folder}
                   </span>
                 ))}
@@ -114,11 +138,7 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
             </div>
           </div>
 
-          <ChatInterface 
-            repositoryId={repository.id} 
-            suggestedQuestions={suggestedQuestions} 
-          />
-
+          <ChatInterface repositoryId={repository.id} suggestedQuestions={suggestedQuestions} />
         </div>
 
         <div className="space-y-6">
@@ -133,7 +153,7 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-border/50">
                 <span className="text-muted text-sm">Language</span>
-                <span className="font-medium">TypeScript</span>
+                <span className="font-medium">{repository.language || (isTypeScript ? 'TypeScript' : 'JavaScript')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted text-sm">Status</span>
@@ -142,7 +162,6 @@ export default async function RepositoryOverview({ params }: { params: Promise<{
             </div>
           </div>
         </div>
-
       </div>
     </main>
   );

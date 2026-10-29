@@ -1,15 +1,53 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import * as tar from 'tar';
 
 const execAsync = promisify(exec);
 
-const ALLOWED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.md', '.json'];
-const IGNORED_DIRS = ['node_modules', 'build', 'dist', '.next', 'coverage', '.git', '.github', '.idea', '.vscode'];
-const IGNORED_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'tsconfig.tsbuildinfo'];
+const ALLOWED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.md', '.json']);
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  'build',
+  'dist',
+  '.next',
+  'coverage',
+  '.git',
+  '.github',
+  '.idea',
+  '.vscode',
+  'out',
+  'vendor',
+  '__tests__',
+  'test',
+  'tests',
+  'e2e',
+  'cypress',
+  'playwright',
+  'fixtures',
+  'mocks',
+  'examples',
+  'docs',
+  'public',
+  'assets',
+  'migrations',
+]);
+const IGNORED_FILES = new Set([
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'bun.lockb',
+  'tsconfig.tsbuildinfo',
+  'skills-lock.json',
+  'CHANGELOG.md',
+  'CONTRIBUTING.md',
+  'CODE_OF_CONDUCT.md',
+  'LICENSE.md',
+  'SECURITY.md',
+]);
+const MAX_FILE_SIZE_BYTES = 128 * 1024; // 128KB max per file to skip large fixtures/bundles
 
 export interface RepoFile {
   path: string;
@@ -23,23 +61,21 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
     throw new Error('Invalid GitHub URL format for cloning.');
   }
 
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'repolense-'));
+  const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'repolense-'));
 
   try {
     const isBranch = cleanUrl.includes('/tree/');
     const baseRepoUrl = isBranch ? cleanUrl.split('/tree/')[0] : cleanUrl;
     const branchName = isBranch ? cleanUrl.split('/tree/')[1].replace(/\/$/, '') : '';
 
-    console.log(`[GitHub] Attempting to clone ${cleanUrl} via git clone...`);
-    if (branchName) {
-      await execAsync(`git clone -b "${branchName}" --depth 1 "${baseRepoUrl}" "${tempDir}"`);
-    } else {
-      await execAsync(`git clone --depth 1 "${baseRepoUrl}" "${tempDir}"`);
-    }
+    console.log(`[GitHub] Attempting shallow clone of ${cleanUrl}...`);
+    const branchFlag = branchName ? `-b "${branchName}" ` : '';
+    await execAsync(
+      `git clone ${branchFlag}--depth 1 --single-branch --filter=blob:none --no-tags "${baseRepoUrl}" "${tempDir}"`
+    );
 
-    console.log(`[GitHub] Reading file tree from ${tempDir}...`);
-    const files = readDirectory(tempDir, tempDir);
-    return files;
+    console.log(`[GitHub] Reading file tree asynchronously from ${tempDir}...`);
+    return await readDirectoryAsync(tempDir, tempDir);
   } catch (gitError: any) {
     console.warn(`[GitHub] git clone failed, trying tarball fallback. Error: ${gitError.message || gitError}`);
 
@@ -59,11 +95,14 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
         : `https://api.github.com/repos/${owner}/${repo}/tarball`;
       console.log(`[GitHub] Downloading tarball from ${tarballUrl}...`);
 
-      const response = await fetch(tarballUrl, {
-        headers: {
-          'User-Agent': 'RepoLense-Importer'
-        }
-      });
+      const headers: Record<string, string> = {
+        'User-Agent': 'RepoLense-Importer',
+      };
+      if (process.env.GITHUB_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
+      }
+
+      const response = await fetch(tarballUrl, { headers });
 
       if (!response.ok) {
         throw new Error(`GitHub API returned status ${response.status}`);
@@ -71,59 +110,99 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
 
       const buffer = Buffer.from(await response.arrayBuffer());
       const tarballPath = path.join(tempDir, 'repo.tar.gz');
-      fs.writeFileSync(tarballPath, buffer);
+      await fsp.writeFile(tarballPath, buffer);
 
       console.log(`[GitHub] Extracting tarball using tar module...`);
       await tar.x({
         file: tarballPath,
-        cwd: tempDir
+        cwd: tempDir,
       });
-      fs.unlinkSync(tarballPath);
+      await fsp.unlink(tarballPath);
 
-      const list = fs.readdirSync(tempDir);
-      if (list.length === 1 && fs.statSync(path.join(tempDir, list[0])).isDirectory()) {
-        const nestedDir = path.join(tempDir, list[0]);
+      const list = await fsp.readdir(tempDir, { withFileTypes: true });
+      const firstDir = list.find((d) => d.isDirectory());
+      if (list.length === 1 && firstDir) {
+        const nestedDir = path.join(tempDir, firstDir.name);
         console.log(`[GitHub] Reading files from extracted folder: ${nestedDir}`);
-        return readDirectory(nestedDir, nestedDir);
+        return await readDirectoryAsync(nestedDir, nestedDir);
       }
 
-      return readDirectory(tempDir, tempDir);
+      return await readDirectoryAsync(tempDir, tempDir);
     } catch (fallbackError: any) {
       console.error(`[GitHub] Tarball fallback also failed:`, fallbackError);
       const details = fallbackError.message || String(fallbackError);
-      throw new Error(`Failed to clone repository: git clone failed (${gitError.message || gitError}), and tarball fallback failed (${details})`);
+      throw new Error(
+        `Failed to clone repository: git clone failed (${gitError.message || gitError}), and tarball fallback failed (${details})`
+      );
     }
   } finally {
     try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      await fsp.rm(tempDir, { recursive: true, force: true });
     } catch (cleanupError) {
       console.error(`[GitHub] Cleanup error:`, cleanupError);
     }
   }
 }
 
-function readDirectory(dir: string, baseDir: string): RepoFile[] {
-  let results: RepoFile[] = [];
-  const list = fs.readdirSync(dir);
+async function readDirectoryAsync(dir: string, baseDir: string): Promise<RepoFile[]> {
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
 
-  for (const file of list) {
-    const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
+  const tasks = entries.map(async (entry): Promise<RepoFile[]> => {
+    const fileName = entry.name;
+    const filePath = path.join(dir, fileName);
 
-    if (stat.isDirectory()) {
-      if (!IGNORED_DIRS.includes(file)) {
-        results = results.concat(readDirectory(filePath, baseDir));
+    if (entry.isDirectory()) {
+      if (IGNORED_DIRS.has(fileName) || fileName.startsWith('.')) {
+        return [];
       }
-    } else {
-      if (IGNORED_FILES.includes(file)) continue;
-      const ext = path.extname(file);
-      if (ALLOWED_EXTENSIONS.includes(ext)) {
-        const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
-        const content = fs.readFileSync(filePath, 'utf-8');
-        results.push({ path: relativePath, content });
-      }
+      return readDirectoryAsync(filePath, baseDir);
     }
-  }
 
-  return results;
+    if (!entry.isFile()) return [];
+    if (IGNORED_FILES.has(fileName)) return [];
+    if (
+      fileName.endsWith('.min.js') ||
+      fileName.endsWith('.bundle.js') ||
+      fileName.endsWith('.map') ||
+      fileName.endsWith('.d.ts') ||
+      fileName.endsWith('.test.ts') ||
+      fileName.endsWith('.test.tsx') ||
+      fileName.endsWith('.spec.ts') ||
+      fileName.endsWith('.spec.tsx') ||
+      fileName.endsWith('.test.js') ||
+      fileName.endsWith('.spec.js') ||
+      fileName.endsWith('.stories.tsx')
+    ) {
+      return [];
+    }
+
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) return [];
+
+    // Only keep package.json and tsconfig.json among .json files (skip data/locale/schema dumps)
+    if (ext === '.json' && fileName !== 'package.json' && fileName !== 'tsconfig.json') {
+      return [];
+    }
+    // Only keep README.md among markdown files to preserve Free Tier embedding quota for code
+    if (ext === '.md' && fileName.toLowerCase() !== 'readme.md') {
+      return [];
+    }
+
+    try {
+      const stat = await fsp.stat(filePath);
+      if (stat.size === 0 || stat.size > MAX_FILE_SIZE_BYTES) {
+        return [];
+      }
+      const content = await fsp.readFile(filePath, 'utf-8');
+      if (content.includes('\0')) return [];
+
+      const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
+      return [{ path: relativePath, content }];
+    } catch {
+      return [];
+    }
+  });
+
+  const nestedResults = await Promise.all(tasks);
+  return nestedResults.flat();
 }

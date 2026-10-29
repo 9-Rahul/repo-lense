@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 
-export function ThreatNode({ data }: { data: any }) {
+export const ThreatNode = memo(function ThreatNode({ data }: { data: any }) {
   let borderStyle = "1px solid #a08e7a";
   let glowStyle = "none";
   let iconColor = "#a08e7a";
@@ -37,13 +38,16 @@ export function ThreatNode({ data }: { data: any }) {
         position={Position.Top}
         style={{ background: "#a08e7a", width: "8px", height: "8px", border: "none" }}
       />
-      
+
       <div
         style={{
           width: "32px",
           height: "32px",
           borderRadius: "50%",
-          backgroundColor: data.type === "sensitive" ? "rgba(255, 180, 171, 0.1)" : "rgba(255, 193, 116, 0.1)",
+          backgroundColor:
+            data.type === "sensitive"
+              ? "rgba(255, 180, 171, 0.1)"
+              : "rgba(255, 193, 116, 0.1)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -57,7 +61,7 @@ export function ThreatNode({ data }: { data: any }) {
           {data.icon}
         </span>
       </div>
-      
+
       <span
         style={{
           color: "#d9e3f6",
@@ -73,7 +77,7 @@ export function ThreatNode({ data }: { data: any }) {
       >
         {data.label}
       </span>
-      
+
       {data.status && (
         <span
           style={{
@@ -84,13 +88,16 @@ export function ThreatNode({ data }: { data: any }) {
             display: "flex",
             alignItems: "center",
             gap: "4px",
-            background: data.type === "sensitive" ? "rgba(255, 180, 171, 0.1)" : "transparent",
+            background:
+              data.type === "sensitive" ? "rgba(255, 180, 171, 0.1)" : "transparent",
             padding: data.type === "sensitive" ? "2px 6px" : "0",
             borderRadius: "4px",
           }}
         >
           {data.type === "sensitive" && (
-            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>warning</span>
+            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+              warning
+            </span>
           )}
           {data.status}
         </span>
@@ -103,9 +110,9 @@ export function ThreatNode({ data }: { data: any }) {
       />
     </div>
   );
-}
+});
 
-export function GatewayNode({ data }: { data: any }) {
+export const GatewayNode = memo(function GatewayNode() {
   return (
     <div
       style={{
@@ -149,4 +156,4 @@ export function GatewayNode({ data }: { data: any }) {
       />
     </div>
   );
-}
+});

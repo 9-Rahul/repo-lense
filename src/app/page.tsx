@@ -8,7 +8,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const repositories = await prisma.repository.findMany({
-    orderBy: { createdAt: 'desc' }
+    select: {
+      id: true,
+      name: true,
+      isIndexed: true,
+      fileCount: true,
+    },
+    orderBy: { createdAt: 'desc' },
   });
 
   return (
@@ -38,9 +44,9 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {repositories.map((repo: { id: string, name: string, isIndexed: boolean, fileCount: number }) => (
-            <Link 
-              key={repo.id} 
+          {repositories.map((repo) => (
+            <Link
+              key={repo.id}
               href={repo.isIndexed ? `/repo/${repo.id}` : `/repo/${repo.id}/indexing`}
               className="p-6 rounded-xl border border-border bg-background hover:bg-accent hover:border-muted transition-all group flex flex-col shadow-sm"
             >
@@ -53,7 +59,11 @@ export default async function DashboardPage() {
               </div>
               <div className="flex items-center gap-4 text-sm text-muted mt-auto">
                 <span className="flex items-center gap-1.5 bg-accent px-2.5 py-1 rounded-md border border-border">
-                  <div className={`w-2 h-2 rounded-full ${repo.isIndexed ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      repo.isIndexed ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+                    }`}
+                  />
                   {repo.isIndexed ? 'Ready' : 'Indexing'}
                 </span>
                 <span className="flex items-center gap-1">

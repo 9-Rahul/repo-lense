@@ -46,4 +46,6 @@ model Chunk {
   endIndex   Int
   
   file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
 }

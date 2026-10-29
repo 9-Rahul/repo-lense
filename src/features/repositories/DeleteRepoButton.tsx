@@ -10,33 +10,39 @@ export default function DeleteRepoButton({ repositoryId }: { repositoryId: strin
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
-    
-    if (!confirm('Are you sure you want to delete this repository? This will remove all indexed files and cannot be undone.')) {
+    e.stopPropagation();
+
+    if (
+      !confirm(
+        'Are you sure you want to delete this repository? This will remove all indexed files and cannot be undone.'
+      )
+    ) {
       return;
     }
 
     setIsDeleting(true);
-    
+
     try {
       const res = await fetch(`/api/repo/${repositoryId}`, {
         method: 'DELETE',
       });
 
       if (!res.ok) throw new Error('Failed to delete');
-      
-      router.refresh();
+
       if (window.location.pathname.includes(`/repo/${repositoryId}`)) {
         router.push('/');
+      } else {
+        router.refresh();
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to delete repository.");
+      alert('Failed to delete repository.');
       setIsDeleting(false);
     }
   };
 
   return (
-    <button 
+    <button
       onClick={handleDelete}
       disabled={isDeleting}
       className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center shrink-0"
