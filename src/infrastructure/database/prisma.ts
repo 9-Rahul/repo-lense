@@ -57,9 +57,18 @@ const pool =
   new Pool({
     connectionString,
     max: 10,
-    idleTimeoutMillis: 30_000,
+    idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 10_000,
+    statement_timeout: 15_000,
+    query_timeout: 15_000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000,
   });
+
+// Handle idle client connection drops gracefully so dead sockets don't crash or poison the pool
+pool.on('error', (err) => {
+  console.warn('[Database] Background pool client reset/error:', err.message);
+});
 
 export const prisma =
   globalForPrisma.prisma ?? new PrismaClient({ adapter: new PrismaPg(pool) });

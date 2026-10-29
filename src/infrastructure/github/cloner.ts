@@ -54,11 +54,57 @@ export interface RepoFile {
   content: string;
 }
 
+export class RepoImportError extends Error {
+  public userMessage: string;
+  public statusCode: number;
+
+  constructor(userMessage: string, statusCode = 400, internalDetails?: string) {
+    super(internalDetails || userMessage);
+    this.name = 'RepoImportError';
+    this.userMessage = userMessage;
+    this.statusCode = statusCode;
+  }
+}
+
+/**
+ * Resilient GitHub fetch helper:
+ * Tries with GITHUB_TOKEN first if configured. If GitHub returns 401 (e.g. expired or invalid token),
+ * it automatically retries unauthenticated so public repositories still succeed!
+ */
+export async function fetchFromGitHub(
+  url: string,
+  extraHeaders: Record<string, string> = {}
+): Promise<Response> {
+  const baseHeaders: Record<string, string> = {
+    'User-Agent': 'RepoLense-Importer',
+    ...extraHeaders,
+  };
+
+  const token = process.env.GITHUB_TOKEN?.trim();
+  if (token) {
+    baseHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  let response = await fetch(url, { headers: baseHeaders });
+
+  // If token was rejected with 401 Unauthorized, retry without token for public repos
+  if (response.status === 401 && token) {
+    console.warn('[GitHub] Configured GITHUB_TOKEN was rejected with 401. Retrying unauthenticated...');
+    delete baseHeaders['Authorization'];
+    response = await fetch(url, { headers: baseHeaders });
+  }
+
+  return response;
+}
+
 export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
   const urlPattern = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/tree\/[A-Za-z0-9_./-]+)?\/?$/;
   const cleanUrl = githubUrl.trim();
   if (!urlPattern.test(cleanUrl)) {
-    throw new Error('Invalid GitHub URL format for cloning.');
+    throw new RepoImportError(
+      'Invalid repository URL. Please enter a valid GitHub URL (e.g. https://github.com/owner/repo).',
+      400
+    );
   }
 
   const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'repolense-'));
@@ -68,51 +114,74 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
     const baseRepoUrl = isBranch ? cleanUrl.split('/tree/')[0] : cleanUrl;
     const branchName = isBranch ? cleanUrl.split('/tree/')[1].replace(/\/$/, '') : '';
 
-    console.log(`[GitHub] Attempting shallow clone of ${cleanUrl}...`);
-    const branchFlag = branchName ? `-b "${branchName}" ` : '';
-    await execAsync(
-      `git clone ${branchFlag}--depth 1 --single-branch --filter=blob:none --no-tags "${baseRepoUrl}" "${tempDir}"`
+    const urlParts = cleanUrl.replace('https://github.com/', '').split('/');
+    const owner = urlParts[0];
+    const repo = urlParts[1].replace(/\/$/, '');
+    let branch = '';
+    if (urlParts.length >= 4 && urlParts[2] === 'tree') {
+      branch = urlParts.slice(3).join('/').replace(/\/$/, '');
+    }
+
+    // In serverless environments (Vercel, AWS Lambda), git binary is not installed.
+    // Skip git clone and download the tarball stream directly.
+    const isServerless = Boolean(
+      process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NEXT_RUNTIME === 'edge'
     );
 
-    console.log(`[GitHub] Reading file tree asynchronously from ${tempDir}...`);
-    return await readDirectoryAsync(tempDir, tempDir);
-  } catch (gitError: any) {
-    console.warn(`[GitHub] git clone failed, trying tarball fallback. Error: ${gitError.message || gitError}`);
+    let clonedSuccessfully = false;
 
-    // fallback to tarball download if git binary is unavailable or clone fails
-    try {
-      const urlParts = cleanUrl.replace('https://github.com/', '').split('/');
-      const owner = urlParts[0];
-      const repo = urlParts[1].replace(/\/$/, '');
-
-      let branch = '';
-      if (urlParts.length >= 4 && urlParts[2] === 'tree') {
-        branch = urlParts.slice(3).join('/').replace(/\/$/, '');
+    if (!isServerless) {
+      try {
+        console.log(`[GitHub] Attempting shallow clone of ${cleanUrl}...`);
+        const branchFlag = branchName ? `-b "${branchName}" ` : '';
+        await execAsync(
+          `git clone ${branchFlag}--depth 1 --single-branch --filter=blob:none --no-tags "${baseRepoUrl}" "${tempDir}"`,
+          { timeout: 30000 }
+        );
+        clonedSuccessfully = true;
+      } catch (gitErr: any) {
+        console.warn(`[GitHub] git clone failed on host, switching to HTTPS tarball stream: ${gitErr.message}`);
       }
+    }
 
+    if (clonedSuccessfully) {
+      console.log(`[GitHub] Reading file tree from ${tempDir}...`);
+      return await readDirectoryAsync(tempDir, tempDir);
+    }
+
+    // Fallback or Serverless path: Stream and extract tarball from GitHub REST API
+    try {
       const tarballUrl = branch
         ? `https://api.github.com/repos/${owner}/${repo}/tarball/${branch}`
         : `https://api.github.com/repos/${owner}/${repo}/tarball`;
-      console.log(`[GitHub] Downloading tarball from ${tarballUrl}...`);
+      console.log(`[GitHub] Downloading tarball stream from ${tarballUrl}...`);
 
-      const headers: Record<string, string> = {
-        'User-Agent': 'RepoLense-Importer',
-      };
-      if (process.env.GITHUB_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
-      }
-
-      const response = await fetch(tarballUrl, { headers });
+      const response = await fetchFromGitHub(tarballUrl);
 
       if (!response.ok) {
-        throw new Error(`GitHub API returned status ${response.status}`);
+        if (response.status === 404) {
+          throw new RepoImportError(
+            'Repository not found or is private. Please ensure the repository is public and the branch exists.',
+            404
+          );
+        }
+        if (response.status === 403) {
+          throw new RepoImportError(
+            'GitHub API rate limit reached. Please wait a few minutes before trying again.',
+            429
+          );
+        }
+        throw new RepoImportError(
+          'Unable to download repository files from GitHub. Please check if the repository is accessible.',
+          response.status
+        );
       }
 
       const buffer = Buffer.from(await response.arrayBuffer());
       const tarballPath = path.join(tempDir, 'repo.tar.gz');
       await fsp.writeFile(tarballPath, buffer);
 
-      console.log(`[GitHub] Extracting tarball using tar module...`);
+      console.log(`[GitHub] Extracting tarball...`);
       await tar.x({
         file: tarballPath,
         cwd: tempDir,
@@ -129,10 +198,13 @@ export async function cloneAndReadRepo(githubUrl: string): Promise<RepoFile[]> {
 
       return await readDirectoryAsync(tempDir, tempDir);
     } catch (fallbackError: any) {
-      console.error(`[GitHub] Tarball fallback also failed:`, fallbackError);
-      const details = fallbackError.message || String(fallbackError);
-      throw new Error(
-        `Failed to clone repository: git clone failed (${gitError.message || gitError}), and tarball fallback failed (${details})`
+      if (fallbackError instanceof RepoImportError) {
+        throw fallbackError;
+      }
+      console.error('[GitHub] Tarball extraction failed:', fallbackError);
+      throw new RepoImportError(
+        'Unable to unpack repository archive. Please verify the repository has valid source files.',
+        500
       );
     }
   } finally {

@@ -54,6 +54,11 @@ export function clearIndexingProgress(repositoryId: string): void {
   progressMap.delete(repositoryId);
 }
 
+export function stopIndexing(repositoryId: string): void {
+  activeIndexingRepos.delete(repositoryId);
+  progressMap.delete(repositoryId);
+}
+
 const MAX_CACHE_ENTRIES = 200;
 const queryEmbeddingCache = new Map<string, number[]>();
 

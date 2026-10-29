@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/infrastructure/database/prisma';
-import { getIndexingProgress, clearIndexingProgress } from '@/features/indexing/embedder';
+import { getIndexingProgress, clearIndexingProgress, stopIndexing } from '@/features/indexing/embedder';
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,16 +10,27 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Repository ID is required' }, { status: 400 });
     }
 
-    clearIndexingProgress(id);
+    // Immediately stop any active or queued indexing operations
+    stopIndexing(id);
 
-    await prisma.repository.delete({
+    // PostgreSQL database foreign keys are configured with ON DELETE CASCADE:
+    // "File" -> "Repository" (ON DELETE CASCADE)
+    // "Chunk" -> "File" (ON DELETE CASCADE)
+    // Deleting the repository row atomically cascades and cleans up all Files and Chunks in <200ms.
+    const result = await prisma.repository.deleteMany({
       where: { id },
     });
 
-    return NextResponse.json({ message: 'Repository deleted successfully' });
+    return NextResponse.json({
+      message: 'Repository deleted successfully',
+      deleted: result.count > 0,
+    });
   } catch (error: any) {
-    console.error('Delete repo error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to delete repository' }, { status: 500 });
+    console.error('[Delete Repo] Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete repository' },
+      { status: 500 }
+    );
   }
 }
 

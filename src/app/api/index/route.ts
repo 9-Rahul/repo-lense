@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, ensureVectorIndexes } from '@/infrastructure/database/prisma';
+import { prisma } from '@/infrastructure/database/prisma';
 import {
   chunkCode,
   generateEmbeddingsBatch,
@@ -22,8 +22,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Indexing is already in progress' });
     }
     activeIndexingRepos.add(repositoryId);
-
-    await ensureVectorIndexes();
 
     const repository = await prisma.repository.findUnique({
       where: { id: repositoryId },
@@ -116,6 +114,11 @@ export async function POST(req: Request) {
     const BATCH_SIZE = 90;
 
     for (let i = 0; i < pendingFileChunks.length; i += BATCH_SIZE) {
+      if (!activeIndexingRepos.has(repository.id)) {
+        console.log(`[Indexing] Cancelled for repository ${repository.id}`);
+        return NextResponse.json({ message: 'Indexing was cancelled' });
+      }
+
       const batch = pendingFileChunks.slice(i, i + BATCH_SIZE);
 
       setIndexingProgress(repository.id, {

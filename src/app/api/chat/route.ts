@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, ensureVectorIndexes } from '@/infrastructure/database/prisma';
+import { prisma } from '@/infrastructure/database/prisma';
 import { generateEmbedding, parseGeminiError } from '@/features/indexing/embedder';
 
 export async function POST(req: Request) {
@@ -16,9 +16,6 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash';
-
-    // Ensure pgvector HNSW index exists (idempotent, runs once per server lifecycle)
-    ensureVectorIndexes().catch(() => {});
 
     // Use RETRIEVAL_QUERY taskType (+ in-memory LRU cache for repeated queries)
     const queryVector = await generateEmbedding(question, 5, 3000, 'RETRIEVAL_QUERY');
