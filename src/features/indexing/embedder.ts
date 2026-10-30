@@ -184,10 +184,9 @@ export function getNextApiKey(): string {
 
 const CANDIDATE_EMBEDDING_MODELS = [
   process.env.GEMINI_EMBEDDING_MODEL,
-  'gemini-embedding-001',
-  'text-embedding-004',
-  'gemini-embedding-2-preview',
   'gemini-embedding-2',
+  'gemini-embedding-2-preview',
+  'gemini-embedding-001',
 ].filter(Boolean) as string[];
 
 export async function generateEmbedding(
@@ -243,6 +242,16 @@ export async function generateEmbedding(
             response.status,
             errText
           );
+
+          const isDailyLimit =
+            errText.toLowerCase().includes('per day limit exceeded') ||
+            (retryAfterMs !== null && retryAfterMs > 300_000);
+          if (isDailyLimit && !globalForIndexing.workingEmbeddingModel) {
+            console.warn(
+              `[Embedder] Model ${modelName} daily quota exhausted, immediately switching to next model...`
+            );
+            break;
+          }
 
           if (isQuotaExhausted) {
             consecutiveQuotaHits++;
@@ -354,6 +363,16 @@ export async function generateEmbeddingsBatch(
             response.status,
             errText
           );
+
+          const isDailyLimit =
+            errText.toLowerCase().includes('per day limit exceeded') ||
+            (retryAfterMs !== null && retryAfterMs > 300_000);
+          if (isDailyLimit && !globalForIndexing.workingEmbeddingModel) {
+            console.warn(
+              `[Embedder] Batch model ${modelName} daily quota exhausted, immediately switching to next model...`
+            );
+            break;
+          }
 
           if (isQuotaExhausted) {
             consecutiveQuotaHits++;
