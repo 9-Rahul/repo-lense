@@ -70,14 +70,20 @@ class NonRetryableApiError extends Error {
 }
 
 /**
- * Extracts a clean, human-readable error message and optional retryDelay (in ms)
- * from a Gemini REST API error payload.
+ * Extracts a clean, human-readable error message, optional retryDelay (in ms),
+ * and quota exhaustion flag from a Gemini REST API error payload.
  */
 export function parseGeminiError(status: number, rawText: string): {
   cleanMessage: string;
   retryAfterMs: number | null;
+  isQuotaExhausted: boolean;
 } {
   let retryAfterMs: number | null = null;
+  const isQuota =
+    status === 429 ||
+    rawText.includes('RESOURCE_EXHAUSTED') ||
+    rawText.toLowerCase().includes('quota exceeded') ||
+    rawText.toLowerCase().includes('rate limit');
 
   // Match "Please retry in 22.37s" or "retryDelay": "22s"
   const retryMatch =
@@ -87,37 +93,59 @@ export function parseGeminiError(status: number, rawText: string): {
     retryAfterMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 2000; // +2s safety buffer
   }
 
-  try {
-    const parsed = JSON.parse(rawText);
-    const msg: string = parsed?.error?.message || rawText;
-    const firstLine = msg.split('\n')[0].trim();
-    return {
-      cleanMessage: firstLine || `Gemini API Error (${status})`,
-      retryAfterMs,
-    };
-  } catch {
-    return {
-      cleanMessage: rawText.slice(0, 200) || `Gemini API Error (${status})`,
-      retryAfterMs,
-    };
+  let cleanMessage = '';
+  if (isQuota) {
+    cleanMessage =
+      'Free Gemini quota is exhausted. Please add a new API key or wait a few minutes for the quota to reset.';
+  } else {
+    try {
+      const parsed = JSON.parse(rawText);
+      const msg: string = parsed?.error?.message || rawText;
+      const firstLine = msg.split('\n')[0].trim();
+      cleanMessage = firstLine || `Gemini API Error (${status})`;
+    } catch {
+      cleanMessage = rawText.slice(0, 200) || `Gemini API Error (${status})`;
+    }
   }
+
+  return {
+    cleanMessage,
+    retryAfterMs,
+    isQuotaExhausted: isQuota,
+  };
 }
 
 let keyRotationIndex = 0;
 
-function getApiKeys(): string[] {
-  const raw = process.env.GEMINI_API_KEY || '';
-  const keys = raw
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
+export function getApiKeys(): string[] {
+  const keys: string[] = [];
+
+  const addKeys = (raw?: string) => {
+    if (!raw) return;
+    for (const k of raw.split(',')) {
+      const trimmed = k.trim();
+      if (trimmed && !keys.includes(trimmed)) {
+        keys.push(trimmed);
+      }
+    }
+  };
+
+  // Support comma-separated in GEMINI_API_KEY
+  addKeys(process.env.GEMINI_API_KEY);
+  // Support GEMINI_API_KEYS
+  addKeys(process.env.GEMINI_API_KEYS);
+  // Support GEMINI_API_KEY_1 ... GEMINI_API_KEY_10
+  for (let i = 1; i <= 10; i++) {
+    addKeys(process.env[`GEMINI_API_KEY_${i}`]);
+  }
+
   if (keys.length === 0) {
     throw new Error('GEMINI_API_KEY is not configured');
   }
   return keys;
 }
 
-function getNextApiKey(): string {
+export function getNextApiKey(): string {
   const keys = getApiKeys();
   const key = keys[keyRotationIndex % keys.length];
   keyRotationIndex = (keyRotationIndex + 1) % keys.length;
@@ -144,7 +172,7 @@ export async function generateEmbedding(
     if (cached) return cached;
   }
 
-  getApiKeys(); // Validate at least one key exists
+  const keys = getApiKeys(); // Validate at least one key exists
 
   const modelsToTry = globalForIndexing.workingEmbeddingModel
     ? [globalForIndexing.workingEmbeddingModel]
@@ -152,6 +180,8 @@ export async function generateEmbedding(
 
   for (const modelName of modelsToTry) {
     let currentDelay = delayMs;
+    let consecutiveQuotaHits = 0;
+
     for (let attempt = 1; attempt <= retries; attempt++) {
       const apiKey = getNextApiKey();
       try {
@@ -179,19 +209,42 @@ export async function generateEmbedding(
             break;
           }
 
-          const { cleanMessage, retryAfterMs } = parseGeminiError(response.status, errText);
+          const { cleanMessage, retryAfterMs, isQuotaExhausted } = parseGeminiError(
+            response.status,
+            errText
+          );
 
-          if ((response.status === 429 || response.status >= 500) && attempt < retries) {
+          if (isQuotaExhausted) {
+            consecutiveQuotaHits++;
+            // If multiple keys are available and we haven't cycled through all of them, switch immediately without delay
+            if (keys.length > 1 && consecutiveQuotaHits < keys.length) {
+              console.warn(
+                `[Embedder] Key quota hit. Failing over to next Gemini API key (${consecutiveQuotaHits}/${keys.length})...`
+              );
+              continue;
+            }
+
             const waitMs = retryAfterMs ?? currentDelay;
             console.warn(
-              `[Embedder] Gemini ${response.status} received. Waiting ${Math.round(
+              `[Embedder] Gemini quota exhausted across ${keys.length} key(s). Waiting ${Math.round(
                 waitMs / 1000
               )}s before retry (Attempt ${attempt}/${retries})...`
             );
+            if (attempt === retries) {
+              throw new NonRetryableApiError(cleanMessage);
+            }
             await new Promise((resolve) => setTimeout(resolve, waitMs));
+            consecutiveQuotaHits = 0;
             currentDelay = Math.min(65_000, currentDelay * 2);
             continue;
           }
+
+          if (response.status >= 500 && attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, currentDelay));
+            currentDelay = Math.min(65_000, currentDelay * 2);
+            continue;
+          }
+
           throw new NonRetryableApiError(cleanMessage);
         }
 
@@ -218,7 +271,7 @@ export async function generateEmbedding(
       }
     }
   }
-  throw new Error('Failed to generate embedding after trying candidate models');
+  throw new Error('Free Gemini quota is exhausted. Please add a new API key or wait a few minutes for the quota to reset.');
 }
 
 export async function generateEmbeddingsBatch(
@@ -228,7 +281,7 @@ export async function generateEmbeddingsBatch(
   onRateLimitWait?: (waitSeconds: number) => void
 ): Promise<number[][]> {
   if (texts.length === 0) return [];
-  getApiKeys(); // Validate at least one key exists
+  const keys = getApiKeys(); // Validate at least one key exists
 
   const modelsToTry = globalForIndexing.workingEmbeddingModel
     ? [globalForIndexing.workingEmbeddingModel]
@@ -236,6 +289,8 @@ export async function generateEmbeddingsBatch(
 
   for (const modelName of modelsToTry) {
     let currentDelay = delayMs;
+    let consecutiveQuotaHits = 0;
+
     for (let attempt = 1; attempt <= retries; attempt++) {
       const apiKey = getNextApiKey();
       try {
@@ -265,22 +320,47 @@ export async function generateEmbeddingsBatch(
             break;
           }
 
-          const { cleanMessage, retryAfterMs } = parseGeminiError(response.status, errText);
+          const { cleanMessage, retryAfterMs, isQuotaExhausted } = parseGeminiError(
+            response.status,
+            errText
+          );
 
-          if ((response.status === 429 || response.status >= 500) && attempt < retries) {
+          if (isQuotaExhausted) {
+            consecutiveQuotaHits++;
+            // If multiple keys are available and we haven't cycled through all of them, switch immediately without delay
+            if (keys.length > 1 && consecutiveQuotaHits < keys.length) {
+              console.warn(
+                `[Embedder] Key quota hit. Immediately failing over to next Gemini API key (${consecutiveQuotaHits}/${keys.length})...`
+              );
+              continue;
+            }
+
             // Respect Google's exact retryDelay (e.g., 22s for Free Tier 100 chunks/min reset)
             const waitMs = retryAfterMs ?? currentDelay;
             const waitSec = Math.ceil(waitMs / 1000);
             console.warn(
-              `[Embedder] Gemini Free Tier rate limit (${response.status}). Waiting ${waitSec}s for quota reset (Attempt ${attempt}/${retries})...`
+              `[Embedder] Free Gemini quota exhausted across all ${keys.length} key(s). Waiting ${waitSec}s for quota reset (Attempt ${attempt}/${retries})...`
             );
             if (onRateLimitWait) {
               onRateLimitWait(waitSec);
             }
+
+            if (attempt === retries) {
+              throw new NonRetryableApiError(cleanMessage);
+            }
+
             await new Promise((resolve) => setTimeout(resolve, waitMs));
+            consecutiveQuotaHits = 0;
             currentDelay = Math.min(65_000, currentDelay * 1.5);
             continue;
           }
+
+          if (response.status >= 500 && attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, currentDelay));
+            currentDelay = Math.min(65_000, currentDelay * 1.5);
+            continue;
+          }
+
           throw new NonRetryableApiError(cleanMessage);
         }
 
@@ -297,7 +377,7 @@ export async function generateEmbeddingsBatch(
       }
     }
   }
-  throw new Error('Failed to generate batched embeddings after trying candidate models');
+  throw new Error('Free Gemini quota is exhausted. Please add a new API key or wait a few minutes for the quota to reset.');
 }
 
 export function chunkCode(content: string, filePath?: string, maxTokens = 2000): string[] {

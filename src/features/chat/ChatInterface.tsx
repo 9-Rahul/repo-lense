@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowRight, MessageSquare, Loader2, FileCode2, User, Bot } from "lucide-react";
+import { ArrowRight, MessageSquare, Loader2, FileCode2, User, Bot, AlertTriangle } from "lucide-react";
 
 type Message = { role: "user" | "assistant"; content: string; sources?: string[] };
 
@@ -153,9 +153,21 @@ export default function ChatInterface({
                 </div>
                 <div className="flex-1 space-y-4 pt-1 min-w-0">
                   {msg.content ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-accent prose-pre:border prose-pre:border-border whitespace-pre-wrap break-words">
-                      {msg.content}
-                    </div>
+                    msg.content.toLowerCase().includes("quota") || msg.content.toLowerCase().includes("exhausted") ? (
+                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2 text-left">
+                        <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>Free Gemini Quota Exhausted</span>
+                        </div>
+                        <p className="text-xs text-amber-200/90 leading-relaxed">
+                          Free Gemini API quota is currently exhausted across all configured keys. Please add a new API key in <code className="px-1 py-0.5 rounded bg-black/40 text-amber-300 font-mono text-[11px]">.env.local</code> (comma-separated: <code className="text-amber-300">key1,key2</code>) or wait a few minutes for the quota to reset.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-accent prose-pre:border prose-pre:border-border whitespace-pre-wrap break-words">
+                        {msg.content}
+                      </div>
+                    )
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-muted animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

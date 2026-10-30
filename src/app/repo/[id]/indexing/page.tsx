@@ -93,24 +93,38 @@ export default function IndexingPage({ params }: { params: Promise<{ id: string 
       : null;
 
   const isRateLimited = progress?.phase === "rate_limited" && !error;
+  const isQuotaExhausted = Boolean(
+    error && (
+      error.toLowerCase().includes("quota") ||
+      error.toLowerCase().includes("exhausted") ||
+      error.toLowerCase().includes("rate limit") ||
+      error.toLowerCase().includes("429")
+    )
+  );
 
   return (
     <main className="min-h-screen p-8 md:p-24 flex items-center justify-center bg-background">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center space-y-2">
           {error ? (
-            <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-6" />
+            <AlertCircle className={`w-10 h-10 mx-auto mb-6 ${isQuotaExhausted ? "text-amber-400" : "text-red-500"}`} />
           ) : (
             <Loader2 className="w-10 h-10 animate-spin text-muted mx-auto mb-6" />
           )}
           <h1 className="text-2xl font-semibold tracking-tight">
-            {error ? "Indexing Paused" : "Indexing Repository"}
+            {error
+              ? isQuotaExhausted
+                ? "Free Gemini Quota Exhausted"
+                : "Indexing Paused"
+              : "Indexing Repository"}
           </h1>
           <p className="text-muted text-sm">
             {error
-              ? "Click Retry below to resume from the last saved batch."
+              ? isQuotaExhausted
+                ? "The free Gemini API quota has been reached across your keys. Add a new key or wait a few minutes for Google to reset it."
+                : "Click Resume below to continue from the last saved batch."
               : isRateLimited
-              ? `Gemini Free Tier limit (100 chunks/min) reached — auto-resuming in ~${progress?.waitSeconds ?? 20}s...`
+              ? `Gemini Free Tier limit reached — auto-resuming in ~${progress?.waitSeconds ?? 20}s...`
               : "Chunking code and generating semantic embeddings with Gemini."}
           </p>
         </div>
@@ -174,7 +188,27 @@ export default function IndexingPage({ params }: { params: Promise<{ id: string 
 
           {error && (
             <div className="pt-3 border-t border-border space-y-3">
-              <p className="text-xs text-red-400 break-words leading-relaxed">{error}</p>
+              {isQuotaExhausted ? (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2 text-left">
+                  <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>Free Gemini Quota Limit Reached</span>
+                  </div>
+                  <p className="text-xs text-amber-200/90 leading-relaxed">
+                    Google has temporarily throttled free tier requests. You can:
+                  </p>
+                  <ul className="text-xs text-amber-200/80 list-disc list-inside space-y-1 pl-1">
+                    <li>Wait a few minutes for Google to reset the quota</li>
+                    <li>Add another key to <code className="px-1 py-0.5 rounded bg-black/40 text-amber-300 font-mono text-[11px]">.env.local</code> (comma-separated: <code className="text-amber-300">key1,key2</code>)</li>
+                  </ul>
+                  <p className="text-[11px] text-muted pt-1">
+                    All chunks saved so far are safe — resuming picks up right where it left off.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-red-400 break-words leading-relaxed">{error}</p>
+              )}
+
               <button
                 onClick={triggerIndexing}
                 disabled={retrying}

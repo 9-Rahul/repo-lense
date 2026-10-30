@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/infrastructure/database/prisma';
-import { generateEmbedding, parseGeminiError } from '@/features/indexing/embedder';
+import { generateEmbedding, parseGeminiError, getApiKeys, getNextApiKey } from '@/features/indexing/embedder';
 
 export async function POST(req: Request) {
   try {
@@ -10,11 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Repository ID and question are required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-
+    const keys = getApiKeys();
     const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash';
 
     // Use RETRIEVAL_QUERY taskType (+ in-memory LRU cache for repeated queries)
@@ -83,11 +79,13 @@ ${question}`;
 
             let response: Response | null = null;
             let delayMs = 2000;
-            const maxRetries = 4;
+            const maxRetries = Math.max(4, keys.length * 2);
+            let consecutiveQuotaHits = 0;
 
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
+              const currentKey = getNextApiKey();
               response = await fetch(
-                `${baseUrl}:streamGenerateContent?alt=sse&key=${apiKey}`,
+                `${baseUrl}:streamGenerateContent?alt=sse&key=${currentKey}`,
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -98,10 +96,33 @@ ${question}`;
               if (response.ok) break;
 
               const errText = await response.text();
-              const { cleanMessage, retryAfterMs } = parseGeminiError(response.status, errText);
+              const { cleanMessage, retryAfterMs, isQuotaExhausted } = parseGeminiError(
+                response.status,
+                errText
+              );
 
-              if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+              if (isQuotaExhausted) {
+                consecutiveQuotaHits++;
+                // Immediately try next key if available
+                if (keys.length > 1 && consecutiveQuotaHits < keys.length) {
+                  console.warn(
+                    `[Chat] Key hit quota limit. Failing over to next Gemini API key...`
+                  );
+                  continue;
+                }
+
+                if (attempt === maxRetries) {
+                  throw new Error(cleanMessage);
+                }
+
                 await new Promise((r) => setTimeout(r, retryAfterMs ?? delayMs));
+                consecutiveQuotaHits = 0;
+                delayMs *= 2;
+                continue;
+              }
+
+              if (response.status >= 500 && attempt < maxRetries) {
+                await new Promise((r) => setTimeout(r, delayMs));
                 delayMs *= 2;
                 continue;
               }
@@ -163,12 +184,14 @@ ${question}`;
 
     // Standard JSON fallback mode
     let answerText = "I couldn't generate an answer.";
-    const retries = 5;
+    const retries = Math.max(4, keys.length * 2);
     let delayMs = 3000;
+    let fallbackQuotaHits = 0;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
+      const currentKey = getNextApiKey();
       const response = await fetch(
-        `${baseUrl}:generateContent?key=${apiKey}`,
+        `${baseUrl}:generateContent?key=${currentKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -178,17 +201,34 @@ ${question}`;
 
       if (!response.ok) {
         const errText = await response.text();
-        const { cleanMessage, retryAfterMs } = parseGeminiError(response.status, errText);
-        if ((response.status === 429 || response.status >= 500) && attempt < retries) {
-          console.warn(
-            `[Chat] Gemini 2.5 Flash ${response.status} received. Retrying in ${
-              retryAfterMs ?? delayMs
-            }ms (Attempt ${attempt}/${retries})...`
-          );
+        const { cleanMessage, retryAfterMs, isQuotaExhausted } = parseGeminiError(
+          response.status,
+          errText
+        );
+
+        if (isQuotaExhausted) {
+          fallbackQuotaHits++;
+          if (keys.length > 1 && fallbackQuotaHits < keys.length) {
+            console.warn(`[Chat] Key hit quota limit. Failing over to next key...`);
+            continue;
+          }
+
+          if (attempt === retries) {
+            throw new Error(cleanMessage);
+          }
+
           await new Promise((resolve) => setTimeout(resolve, retryAfterMs ?? delayMs));
+          fallbackQuotaHits = 0;
           delayMs *= 2;
           continue;
         }
+
+        if (response.status >= 500 && attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          delayMs *= 2;
+          continue;
+        }
+
         throw new Error(cleanMessage);
       }
 
