@@ -130,13 +130,11 @@ export function getApiKeys(): string[] {
     }
   };
 
-  // Support comma-separated in GEMINI_API_KEY
-  addKeys(process.env.GEMINI_API_KEY);
-  // Support GEMINI_API_KEYS
-  addKeys(process.env.GEMINI_API_KEYS);
-  // Support GEMINI_API_KEY_1 ... GEMINI_API_KEY_10
-  for (let i = 1; i <= 10; i++) {
-    addKeys(process.env[`GEMINI_API_KEY_${i}`]);
+  // Case-insensitively check GEMINI_API_KEY, GEMINI_API_KEYS, and numbered GEMINI_API_KEY_1..N
+  for (const [name, val] of Object.entries(process.env)) {
+    if (/^gemini_api_key(_\d+)?$/i.test(name) || /^gemini_api_keys$/i.test(name)) {
+      addKeys(val);
+    }
   }
 
   if (keys.length === 0) {
