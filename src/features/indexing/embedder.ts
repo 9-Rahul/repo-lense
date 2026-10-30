@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 export type EmbeddingTaskType = 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY';
 
 export interface IndexingProgressState {
@@ -130,11 +133,40 @@ export function getApiKeys(): string[] {
     }
   };
 
-  // Case-insensitively check GEMINI_API_KEY, GEMINI_API_KEYS, and numbered GEMINI_API_KEY_1..N
+  // 1. Case-insensitively check process.env
   for (const [name, val] of Object.entries(process.env)) {
     if (/^gemini_api_key(_\d+)?$/i.test(name) || /^gemini_api_keys$/i.test(name)) {
       addKeys(val);
     }
+  }
+
+  // 2. Also read directly from .env.local on disk so newly added keys take effect INSTANTLY without server restarts
+  try {
+    const envPath = path.resolve(process.cwd(), '.env.local');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx !== -1) {
+          const varName = trimmed.slice(0, eqIdx).trim();
+          let varVal = trimmed.slice(eqIdx + 1).trim();
+          if (
+            (varVal.startsWith('"') && varVal.endsWith('"')) ||
+            (varVal.startsWith("'") && varVal.endsWith("'"))
+          ) {
+            varVal = varVal.slice(1, -1);
+          }
+          if (/^gemini_api_key(_\d+)?$/i.test(varName) || /^gemini_api_keys$/i.test(varName)) {
+            addKeys(varVal);
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-fatal if running in an environment where file read is disallowed
   }
 
   if (keys.length === 0) {

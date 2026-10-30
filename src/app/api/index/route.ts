@@ -110,8 +110,9 @@ export async function POST(req: Request) {
       totalChunks,
     });
 
-    // Send up to 90 chunks per batch (strictly under the 100/min Free Tier quota)
-    const BATCH_SIZE = 90;
+    // Send 15 chunks per batch (well within Google AI Studio's 20-chunk burst limit per key)
+    // Rotating across configured keys gives smooth, lightning-fast embedding in seconds without 429 delays!
+    const BATCH_SIZE = 15;
 
     for (let i = 0; i < pendingFileChunks.length; i += BATCH_SIZE) {
       if (!activeIndexingRepos.has(repository.id)) {
@@ -179,6 +180,10 @@ export async function POST(req: Request) {
         processedChunks,
         totalChunks,
       });
+
+      if (i + BATCH_SIZE < pendingFileChunks.length) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
     }
 
     await prisma.repository.update({
